@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
           <div className="my-header">
             <HeaderButton myLink={"/table/colleges"}> College </HeaderButton>
             <HeaderButton myLink={"/table/programs"}> Programs </HeaderButton>
-            <HeaderButton myLink={"/table"}> Students </HeaderButton>
+            <HeaderButton myLink={"/table/students"}> Students </HeaderButton>
             
 
           </div>
