@@ -12,18 +12,27 @@ export default function Programs() {
 
   const updateTableData = async () => {
     console.log("Fetching Programs...");
-    const data = await fetch("http://192.168.1.9:5000/get/programs");
-    const result = await data.json();
+    const res = await fetch("http://192.168.1.9:5000/get/programs");
+    const result = await res.json();
+    console.log("GET /get/programs ->", result);
     set_table_data(result);
   };
 
-  const submitForm = () => {
-    console.log(
-      `Submitting Program [${program_code} | ${program_name} | ${program_college}]`
-    );
-    fetch(
-      `http://192.168.1.9:5000/insert/program/${program_code}/${program_name}/${program_college}`
-    );
+  const submitForm = async () => {
+    const parts = [program_code, program_name, program_college].map(encodeURIComponent);
+    try {
+      const res = await fetch(`http://192.168.1.9:5000/insert/program/${parts.join('/')}`);
+      const text = await res.text();
+      console.log("INSERT program response:", res.status, text);
+      if (res.ok) {
+        await updateTableData();
+        clearFields();
+      } else {
+        console.error("Insert failed:", res.status, text);
+      }
+    } catch (err) {
+      console.error("Network error:", err);
+    }
   };
 
   const clearFields = () => {

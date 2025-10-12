@@ -21,26 +21,25 @@ export default function Table({ table_name="Table", headers=["header1", "header2
             <table> 
                 <thead>
                     <tr>
-                        {/* <th>First Name</th>
-                        <th>Last Name</th>
-                        <th>Sex</th>
-                        <th>ID Number</th>
-                        <th>Year Level</th>
-                        <th>College</th>
-                        <th>Program</th> */}
-
-                        {headers.map((header) => (
-                            <th key={header}>{header}</th>
+                        {headers.map((header, i) => (
+                            <th key={i}>{header}</th>
                         ))}
                     </tr>
                 </thead>
 
                 <tbody>
-                    
-                    {table_data.map((coll) => (
-                        <tr key={coll[0]} className='h-10 college' onClick={() => {setVisibleInfoCard(true); setCollegeValue([coll[0], coll[1]]);}}>
-                            <td>{coll[0]}</td>
-                            <td>{coll[1]}</td>
+                    {table_data.map((row, rowIdx) => (
+                        <tr
+                            key={rowIdx}
+                            className='h-10 college'
+                            onClick={() => {
+                                setVisibleInfoCard(true);
+                                setCollegeValue(row); // pass whole row array to InfoCard
+                            }}
+                        >
+                            {headers.map((_, colIdx) => (
+                                <td key={colIdx}>{(row && row[colIdx] !== undefined) ? row[colIdx] : ""}</td>
+                            ))}
                         </tr>
                     ))}
                 </tbody>

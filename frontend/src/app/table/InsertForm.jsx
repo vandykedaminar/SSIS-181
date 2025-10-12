@@ -19,14 +19,14 @@ export default function InsertForm({ insert_form_name="Insert Form", fields=[["F
                 </div>
                 <div className='insert-inputs'>
 
-                    {fields.map((f) => (
-                        <div key={f}>
+                    {fields.map((f, i) => (
+                        <div key={i}>
                             <label>{f[0]}</label>
                             <input value={f[1]} onChange={(e) => f[2](e.target.value)}/>
                         </div>
                     ))}
 
-                    <button onClick={submitButton}>Done</button>
+                    <button type="button" onClick={submitButton}>Done</button>
                 </div>
             </div>
         </>

@@ -2,11 +2,10 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
+import re
 
-# 2. Create an instance of the Flask class
 app = Flask(__name__)
 CORS(app)
-# Configure the PostgreSQL database URI
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgre2314@localhost:5432/postgres'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -21,6 +20,19 @@ def hello_world():
 class College(db.Model):
     code = db.Column(db.String(16), primary_key=True)
     name = db.Column(db.String(80), nullable=False)
+
+class Program(db.Model):
+    code = db.Column(db.String(16), primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    college = db.Column(db.String(16), db.ForeignKey('college.code'), nullable=False)
+
+class Student(db.Model):
+    id = db.Column(db.String(12), primary_key=True)  # expected format: YYYY-NNNN
+    first_name = db.Column(db.String(80), nullable=False)
+    last_name = db.Column(db.String(80), nullable=False)
+    course = db.Column(db.String(16), db.ForeignKey('program.code'), nullable=False)  # references Program.code
+    year = db.Column(db.String(8), nullable=False)
+    gender = db.Column(db.String(16), nullable=False)
 
 with app.app_context():
     db.create_all()
@@ -41,7 +53,7 @@ def insertCollege(code, name):
         # It's a good idea to log the error here
         print(f"An error occurred: {e}")
         return jsonify({"error": "An unexpected error occurred on the server."}), 500
-    
+ 
 @app.route("/get/colleges")
 def getColleges():
     colleges = College.query.all()
@@ -72,6 +84,35 @@ def insertProgram(code, name, college):
 def getPrograms():
     programs = Program.query.all()
     result = [[p.code, p.name, p.college] for p in programs]
+    return jsonify(result)
+
+@app.route("/insert/student/<string:sid>/<string:first>/<string:last>/<string:course>/<string:year>/<string:gender>")
+def insertStudent(sid, first, last, course, year, gender):
+    # validate student id format YYYY-NNNN
+    if not re.match(r'^\d{4}-\d{4}$', sid):
+        return jsonify({"error": "Student ID must be in format YYYY-NNNN."}), 400
+
+    # ensure referenced program exists
+    if not Program.query.get(course):
+        return jsonify({"error": f"Program with code '{course}' not found."}), 400
+
+    try:
+        student = Student(id=sid, first_name=first, last_name=last, course=course, year=year, gender=gender)
+        db.session.add(student)
+        db.session.commit()
+        return jsonify([student.id, student.first_name, student.last_name, student.course, student.year, student.gender]), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": f"Student with ID '{sid}' already exists or constraint failed."}), 409
+    except Exception as e:
+        db.session.rollback()
+        print(f"An error occurred: {e}")
+        return jsonify({"error": "An unexpected error occurred on the server."}), 500
+
+@app.route("/get/students")
+def getStudents():
+    students = Student.query.all()
+    result = [[s.id, s.first_name, s.last_name, s.course, s.year, s.gender] for s in students]
     return jsonify(result)
 
 # This part is optional but good practice to run the app
