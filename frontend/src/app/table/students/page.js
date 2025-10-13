@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import Table from "../page";
 import InsertForm from "../InsertForm";
 
+const API_BASE = "http://localhost:5000"; // adjust to your backend
+
 export default function Students() {
   const [student_id, set_student_id] = useState("");
   const [first_name, set_first_name] = useState("");
@@ -10,57 +12,34 @@ export default function Students() {
   const [course, set_course] = useState("");
   const [year, set_year] = useState("");
   const [gender, set_gender] = useState("");
-
   const [table_data, set_table_data] = useState([]);
 
   const updateTableData = async () => {
-    console.log("Fetching Students...");
-    const data = await fetch("http://192.168.1.9:5000/get/students");
-    const result = await data.json();
+    const res = await fetch(`${API_BASE}/get/students`);
+    const result = await res.json();
     set_table_data(result);
   };
 
   const submitForm = async () => {
-      console.log(
-        `Submitting Student [${student_id} | ${first_name} | ${last_name} | ${course} | ${year} | ${gender}]`
-      );
-
-      // client-side validation for ID format YYYY-NNNN
-      if (!/^\d{4}-\d{4}$/.test(student_id)) {
-        console.error("Invalid student ID format. Expected YYYY-NNNN.");
-        return;
-      }
-
-      try {
-        const parts = [student_id, first_name, last_name, course, year, gender].map(encodeURIComponent);
-        const res = await fetch(`http://192.168.1.9:5000/insert/student/${parts.join('/')}`);
-
-        if (res.ok) {
-          // success -> refresh table and clear form
-          await updateTableData();
-          clearFields();
-          console.log("Student inserted successfully.");
-        } else {
-          const body = await res.text();
-          console.error("Insert failed:", res.status, body);
-        }
-      } catch (err) {
-        console.error("Network error:", err);
-      }
-    };
-
-  const clearFields = () => {
-    set_student_id("");
-    set_first_name("");
-    set_last_name("");
-    set_course("");
-    set_year("");
-    set_gender("");
+    if (!/^\d{4}-\d{4}$/.test(student_id)) { console.error("Invalid ID"); return; }
+    const parts = [student_id, first_name, last_name, course, year, gender].map(encodeURIComponent);
+    const res = await fetch(`${API_BASE}/insert/student/${parts.join("/")}`);
+    if (res.ok) { await updateTableData(); clearFields(); } else { console.error(await res.text()); }
   };
 
-  useEffect(() => {
-    updateTableData();
-  }, []);
+  const clearFields = () => {
+    set_student_id(""); set_first_name(""); set_last_name(""); set_course(""); set_year(""); set_gender("");
+  };
+
+  useEffect(() => { updateTableData(); }, []);
+
+  const handleDelete = async (values) => {
+    const id = values && values[0];
+    if (!id) return;
+    if (!confirm(`Delete student ${id}?`)) return;
+    const res = await fetch(`${API_BASE}/delete/student/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (res.ok) await updateTableData(); else console.error(await res.text());
+  };
 
   return (
     <>
@@ -76,11 +55,7 @@ export default function Students() {
         functions={[updateTableData, submitForm, clearFields]}
       />
 
-      <Table
-        table_name={"Student Table"}
-        headers={["ID", "First Name", "Last Name", "Course", "Year", "Gender"]}
-        table_data={table_data}
-      />
+      <Table table_name={"Student Table"} headers={["ID", "First Name", "Last Name", "Course", "Year", "Gender"]} table_data={table_data} onDelete={handleDelete} />
     </>
   );
 }

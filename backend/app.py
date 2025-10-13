@@ -24,16 +24,16 @@ class College(db.Model):
 class Program(db.Model):
     code = db.Column(db.String(16), primary_key=True)
     name = db.Column(db.String(120), nullable=False)
-    college = db.Column(db.String(16), db.ForeignKey('college.code'), nullable=False)
+    college = db.Column(db.String(16), db.ForeignKey('college.code', ondelete='SET NULL'), nullable=True)
 
 class Student(db.Model):
-    id = db.Column(db.String(12), primary_key=True)  # expected format: YYYY-NNNN
+    id = db.Column(db.String(12), primary_key=True)
     first_name = db.Column(db.String(80), nullable=False)
     last_name = db.Column(db.String(80), nullable=False)
-    course = db.Column(db.String(16), db.ForeignKey('program.code'), nullable=False)  # references Program.code
+    course = db.Column(db.String(16), db.ForeignKey('program.code', ondelete='SET NULL'), nullable=True)
     year = db.Column(db.String(8), nullable=False)
     gender = db.Column(db.String(16), nullable=False)
-
+    
 with app.app_context():
     db.create_all()
 
@@ -114,6 +114,49 @@ def getStudents():
     students = Student.query.all()
     result = [[s.id, s.first_name, s.last_name, s.course, s.year, s.gender] for s in students]
     return jsonify(result)
+
+@app.route("/delete/college/<string:code>", methods=["DELETE"])
+def delete_college(code):
+    col = College.query.get(code)
+    if not col:
+        return jsonify({"error": "College not found"}), 404
+    try:
+        # safe if column is nullable
+        Program.query.filter_by(college=code).update({"college": None})
+        db.session.delete(col)
+        db.session.commit()
+        return "", 204
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/delete/program/<string:code>", methods=["DELETE"])
+def delete_program(code):
+    prog = Program.query.get(code)
+    if not prog:
+        return jsonify({"error": "Program not found"}), 404
+    try:
+        Student.query.filter_by(course=code).update({"course": None})
+        db.session.delete(prog)
+        db.session.commit()
+        return "", 204
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+# DELETE student
+@app.route("/delete/student/<string:sid>", methods=["DELETE"])
+def delete_student(sid):
+    student = Student.query.get(sid)
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+    try:
+        db.session.delete(student)
+        db.session.commit()
+        return "", 204
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 # This part is optional but good practice to run the app
 if __name__ == "__main__":
