@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import HeaderButton from "../HeaderButton";
 import InfoCardData from "./InfoCardData";
@@ -8,41 +9,51 @@ export default function InfoCard({
   visibility = [false, () => {}],
   values = [],
   headers = [],
-  deleteEndpoint = null,
   onDelete = null,
+  onUpdate = null, // New prop for handling updates
 }) {
   const [visible, setVisible] = visibility;
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedValues, setEditedValues] = useState([...values]);
+
+  // Effect to reset state when a new row is clicked or the card is closed
+  useEffect(() => {
+    if (visible) {
+      setEditedValues([...values]); // Reset edited values to original when card opens
+    } else {
+      setIsEditing(false); // Exit edit mode when card closes
+    }
+  }, [visible, values]);
+
+
+  const handleValueChange = (index, newValue) => {
+    const newValues = [...editedValues];
+    newValues[index] = newValue;
+    setEditedValues(newValues);
+  };
+
+  const handleCancel = () => {
+    setEditedValues([...values]); // Revert changes
+    setIsEditing(false);
+  };
+
+  const handleSave = async () => {
+    if (typeof onUpdate === "function") {
+      await onUpdate(values, editedValues); // Pass original and new values
+      setIsEditing(false); // Exit edit mode on successful save
+    } else {
+      console.warn("No onUpdate function provided to InfoCard.");
+    }
+  };
 
   const doDelete = async () => {
     const idLabel = values && values[0] ? values[0] : "this item";
-    if (!window.confirm(`Delete ${idLabel}?`)) return;
-
+    // The browser confirm dialog is now in the parent page for better control
     if (typeof onDelete === "function") {
       await onDelete(values);
-      return;
+    } else {
+      console.warn("No onDelete provided to InfoCard.");
     }
-
-    if (deleteEndpoint) {
-      const id = values && values[0];
-      const url =
-        typeof deleteEndpoint === "function"
-          ? deleteEndpoint(values)
-          : `${deleteEndpoint}/${encodeURIComponent(id)}`;
-      try {
-        const res = await fetch(url, { method: "DELETE" });
-        if (!res.ok) {
-          const txt = await res.text();
-          console.error("Delete failed:", res.status, txt);
-          return;
-        }
-        setVisible(false);
-      } catch (err) {
-        console.error("Delete request error:", err);
-      }
-      return;
-    }
-
-    console.warn("No onDelete or deleteEndpoint provided to InfoCard.");
   };
 
   if (!visible) return null;
@@ -56,18 +67,38 @@ export default function InfoCard({
             <Image src="/close.svg" alt="Close" width={28} height={28} className="invert" />
           </HeaderButton>
 
-          <HeaderButton onClick={() => doDelete()} style={{ width: "45px" }}>
-            <Image src={"/trash.svg"} alt="Trash" width={28} height={28} className="invert" />
-          </HeaderButton>
-
-          <HeaderButton style={{ width: "45px" }}>
-            <Image src={"/edit.svg"} alt="Edit" width={28} height={28} className="invert" />
-          </HeaderButton>
+          {!isEditing ? (
+            // Buttons for VIEW mode
+            <>
+              <HeaderButton onClick={doDelete} style={{ width: "45px" }}>
+                <Image src={"/trash.svg"} alt="Trash" width={28} height={28} className="invert" />
+              </HeaderButton>
+              <HeaderButton onClick={() => setIsEditing(true)} style={{ width: "45px" }}>
+                <Image src={"/edit.svg"} alt="Edit" width={28} height={28} className="invert" />
+              </HeaderButton>
+            </>
+          ) : (
+            // Buttons for EDIT mode
+            <>
+              <HeaderButton onClick={handleCancel} style={{ width: "45px" }}>
+                <Image src={"/cancel.svg"} alt="Cancel" width={28} height={28} className="invert" />
+              </HeaderButton>
+              <HeaderButton onClick={handleSave} style={{ width: "45px" }}>
+                <Image src={"/save.svg"} alt="Save" width={28} height={28} className="invert" />
+              </HeaderButton>
+            </>
+          )}
         </div>
 
-        {values && values.length > 0 ? (
-          values.map((val, i) => (
-            <InfoCardData key={i} text={(headers && headers[i]) ? `${headers[i]}: ` : `Field ${i + 1}: `} value={val} />
+        {editedValues.length > 0 ? (
+          editedValues.map((val, i) => (
+            <InfoCardData
+              key={i}
+              text={`${headers[i]}: `}
+              value={val}
+              isEditable={isEditing}
+              onChange={(e) => handleValueChange(i, e.target.value)}
+            />
           ))
         ) : (
           <div className="info-empty">No data</div>

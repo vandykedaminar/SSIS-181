@@ -8,9 +8,10 @@ export default function Table({
   table_name = "Table",
   headers = ["header1", "header2"],
   table_data = [],
-  deleteEndpoint = null,
+  deleteEndpoint = null, // This prop is no longer used, logic moved to parent pages
   onDelete = null,
   onRefresh = null,
+  onUpdate = null, // Add onUpdate prop
 }) {
   const [visibleInfoCard, setVisibleInfoCard] = useState(false);
   const [rowValue, setRowValue] = useState([]);
@@ -20,41 +21,37 @@ export default function Table({
     setData(Array.isArray(table_data) ? table_data : []);
   }, [table_data]);
 
-  // Called by InfoCard via onDelete prop
+  // The handleDelete logic is now fully managed by the parent page (e.g., students/page.js)
+  // This simplifies the Table component.
   const handleDelete = async (values) => {
-    const id = values && values[0];
-    if (!id) return;
-
     if (typeof onDelete === "function") {
       await onDelete(values);
       setVisibleInfoCard(false);
-      return;
+    } else {
+      console.warn("No onDelete provided to Table.");
     }
+  };
 
-    if (deleteEndpoint) {
-      const url = typeof deleteEndpoint === "function" ? deleteEndpoint(values) : `${deleteEndpoint}/${encodeURIComponent(id)}`;
-      try {
-        const res = await fetch(url, { method: "DELETE" });
-        if (!res.ok) {
-          console.error("Delete failed:", res.status, await res.text());
-          return;
-        }
-        // remove locally to update UI
-        setData((prev) => prev.filter((r) => r[0] !== id));
-        setVisibleInfoCard(false);
-        if (typeof onRefresh === "function") await onRefresh();
-      } catch (err) {
-        console.error("Delete error:", err);
-      }
-      return;
+  // The handleUpdate logic is also fully managed by the parent page
+  const handleUpdate = async (originalValues, newValues) => {
+     if (typeof onUpdate === "function") {
+      await onUpdate(originalValues, newValues);
+      // Let the parent handle closing the card if needed, or we can do it here
+      setVisibleInfoCard(false);
+    } else {
+      console.warn("No onUpdate provided to Table.");
     }
-
-    console.warn("No onDelete or deleteEndpoint provided to Table.");
   };
 
   return (
     <>
-      <InfoCard visibility={[visibleInfoCard, setVisibleInfoCard]} values={rowValue} headers={headers} onDelete={handleDelete} />
+      <InfoCard
+        visibility={[visibleInfoCard, setVisibleInfoCard]}
+        values={rowValue}
+        headers={headers}
+        onDelete={handleDelete}
+        onUpdate={handleUpdate} // Pass the handler to InfoCard
+      />
 
       <div className="table-header">
         <label>{table_name}</label>

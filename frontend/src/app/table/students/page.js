@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Table from "../page";
 import InsertForm from "../InsertForm";
 
-const API_BASE = "http://localhost:5000"; // adjust to your backend
+const API_BASE = "http://192.168.1.9:5000"; // adjust to your backend
 
 export default function Students() {
   const [student_id, set_student_id] = useState("");
@@ -21,7 +21,7 @@ export default function Students() {
   };
 
   const submitForm = async () => {
-    if (!/^\d{4}-\d{4}$/.test(student_id)) { console.error("Invalid ID"); return; }
+    if (!/^\d{4}-\d{4}$/.test(student_id)) { alert("Invalid ID format. Must be YYYY-NNNN."); return; }
     const parts = [student_id, first_name, last_name, course, year, gender].map(encodeURIComponent);
     const res = await fetch(`${API_BASE}/insert/student/${parts.join("/")}`);
     if (res.ok) { await updateTableData(); clearFields(); } else { console.error(await res.text()); }
@@ -41,6 +41,33 @@ export default function Students() {
     if (res.ok) await updateTableData(); else console.error(await res.text());
   };
 
+  const handleUpdate = async (originalValues, newValues) => {
+    const originalId = originalValues[0];
+    if (!/^\d{4}-\d{4}$/.test(newValues[0])) { alert("Invalid ID format. Must be YYYY-NNNN."); return; }
+    const updatePayload = {
+        id: newValues[0],
+        first_name: newValues[1],
+        last_name: newValues[2],
+        course: newValues[3],
+        year: newValues[4],
+        gender: newValues[5],
+    };
+
+    const res = await fetch(`${API_BASE}/update/student/${encodeURIComponent(originalId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatePayload),
+    });
+
+    if (res.ok) {
+        await updateTableData();
+    } else {
+        const err_txt = await res.text();
+        console.error("Update failed:", err_txt);
+        alert(`Update failed: ${err_txt}`);
+    }
+  };
+
   return (
     <>
       <InsertForm
@@ -55,7 +82,13 @@ export default function Students() {
         functions={[updateTableData, submitForm, clearFields]}
       />
 
-      <Table table_name={"Student Table"} headers={["ID", "First Name", "Last Name", "Course", "Year", "Gender"]} table_data={table_data} onDelete={handleDelete} />
+      <Table 
+        table_name={"Student Table"} 
+        headers={["ID", "First Name", "Last Name", "Course", "Year", "Gender"]} 
+        table_data={table_data} 
+        onDelete={handleDelete} 
+        onUpdate={handleUpdate}
+      />
     </>
   );
 }
