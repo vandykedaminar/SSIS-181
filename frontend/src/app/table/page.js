@@ -1,3 +1,4 @@
+// ...existing code...
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import "./table.css";
@@ -13,7 +14,7 @@ export default function Table({
   onDelete = null,
   onRefresh = null,
   filterOptions = null, // e.g. ["All", "College A", "College B"] or []
-  filterColumn = null,  // index of column used for filter
+  filterColumn = null, // index of column used for filter
 }) {
   const [visibleInfoCard, setVisibleInfoCard] = useState(false);
   const [rowValue, setRowValue] = useState([]);
@@ -27,11 +28,20 @@ export default function Table({
   // filter state (selected value from filterOptions)
   const [filterValue, setFilterValue] = useState("");
 
+  // pagination
+  const PAGE_SIZE = 50;
+  const [currentPage, setCurrentPage] = useState(1);
+
   useEffect(() => {
     setData(Array.isArray(table_data) ? table_data : []);
-    // reset filter options selection when data changes
     setFilterValue("");
+    setCurrentPage(1);
   }, [table_data]);
+
+  // reset page when search/filter/sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, filterValue, sortColumn, sortDirection]);
 
   // derived / filtered / sorted data
   const filteredData = useMemo(() => {
@@ -83,6 +93,44 @@ export default function Table({
     return rows;
   }, [data, query, filterColumn, filterValue, sortColumn, sortDirection]);
 
+  // pagination computed values
+  const totalItems = filteredData.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
+
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageEnd = Math.min(pageStart + PAGE_SIZE, totalItems);
+  const pageRows = filteredData.slice(pageStart, pageEnd);
+
+  const changePage = (p) => {
+    const target = Math.max(1, Math.min(totalPages, p));
+    setCurrentPage(target);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const renderPageButtons = () => {
+    const pages = [];
+    let start = Math.max(1, currentPage - 3);
+    let end = Math.min(totalPages, start + 6);
+    if (end - start < 6) start = Math.max(1, end - 6);
+
+    for (let i = start; i <= end; i++) {
+      pages.push(
+        <button
+          key={i}
+          className={`pager-btn ${i === currentPage ? "active" : ""}`}
+          onClick={() => changePage(i)}
+          aria-current={i === currentPage ? "page" : undefined}
+        >
+          {i}
+        </button>
+      );
+    }
+    return pages;
+  };
+
   const handleDelete = async (values) => {
     const id = values && values[0];
     if (!id) return;
@@ -108,6 +156,7 @@ export default function Table({
           const body = await res.text();
           throw new Error(`Delete failed: ${res.status} ${body}`);
         }
+        // remove from local data
         setData((prev) => prev.filter((r) => r[0] !== id));
         setVisibleInfoCard(false);
         if (typeof onRefresh === "function") await onRefresh();
@@ -129,7 +178,6 @@ export default function Table({
         onDelete={handleDelete}
       />
 
-      {/* wide gray bar containing centered table title and search + sort + optional filter on the right */}
       <div
         className="table-header-bar"
         style={{
@@ -142,18 +190,14 @@ export default function Table({
           marginBottom: 12,
         }}
       >
-        <div style={{ width: 72 }} /> {/* reserved space for sidebar */}
-
-        <div style={{ flex: 1, textAlign: "center", fontWeight: 700, fontSize: 18 }}>
-          {table_name}
-        </div>
+        <div style={{ width: 72 }} />
+        <div style={{ flex: 1, textAlign: "center", fontWeight: 700, fontSize: 18 }}>{table_name}</div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 320 }}>
           <div style={{ width: 260 }}>
             <SearchBar value={query} onChange={setQuery} placeholder={`Search ${table_name}`} />
           </div>
 
-          {/* sort controls: choose column and direction */}
           <select
             aria-label="Sort column"
             value={sortColumn}
@@ -177,7 +221,6 @@ export default function Table({
             <option value="desc">Desc</option>
           </select>
 
-          {/* optional filter dropdown (only rendered if filterOptions provided and filterColumn set) */}
           {filterOptions && filterColumn !== null && (
             <select
               aria-label="Filter"
@@ -207,9 +250,9 @@ export default function Table({
           </thead>
 
           <tbody>
-            {filteredData.map((row, rowIdx) => (
+            {pageRows.map((row, rowIdx) => (
               <tr
-                key={rowIdx}
+                key={pageStart + rowIdx}
                 className="h-10 college"
                 onClick={() => {
                   setVisibleInfoCard(true);
@@ -221,7 +264,7 @@ export default function Table({
                 ))}
               </tr>
             ))}
-            {filteredData.length === 0 && (
+            {pageRows.length === 0 && (
               <tr>
                 <td colSpan={headers.length} style={{ textAlign: "center", padding: 12, color: "var(--muted, #6b7280)" }}>
                   No results
@@ -230,7 +273,32 @@ export default function Table({
             )}
           </tbody>
         </table>
+
+        <div className="pagination-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12 }}>
+          <div className="pagination-info" style={{ color: "var(--muted)" }}>
+            Showing {totalItems === 0 ? 0 : pageStart + 1} - {pageEnd} of {totalItems}
+          </div>
+
+          <div className="pagination-controls" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="pager-btn" onClick={() => changePage(1)} disabled={currentPage === 1}>
+              First
+            </button>
+            <button className="pager-btn" onClick={() => changePage(currentPage - 1)} disabled={currentPage === 1}>
+              Prev
+            </button>
+
+            {renderPageButtons()}
+
+            <button className="pager-btn" onClick={() => changePage(currentPage + 1)} disabled={currentPage === totalPages}>
+              Next
+            </button>
+            <button className="pager-btn" onClick={() => changePage(totalPages)} disabled={currentPage === totalPages}>
+              Last
+            </button>
+          </div>
+        </div>
       </div>
     </>
   );
 }
+// ...existing code...

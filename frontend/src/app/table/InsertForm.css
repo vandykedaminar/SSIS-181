@@ -1,3 +1,4 @@
+
 .insert {
     /* background-color: var(--color-background); */
     backdrop-filter: blur(3px);
@@ -6,7 +7,7 @@
 }
 
 .insert-header {
-    background-color: var(--border-color);
+    background-color: #0b5560;
     height: 35px;
     display: flex;
     align-items: center;
@@ -26,7 +27,7 @@
     flex-direction: column;
     align-items: center;
     max-width: 300px;
-    border: .1px dashed rgb(117, 117, 117);
+    border: 2px solid rgb(117, 117, 117);
     border-radius: 7px;
     background-color: var(--color-background);
 }
