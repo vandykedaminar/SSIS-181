@@ -13,6 +13,8 @@ export default function Table({
   deleteEndpoint = null,
   onDelete = null,
   onRefresh = null,
+  onUpdate = null,
+  updateEndpoint = null,
   filterOptions = null, // e.g. ["All", "College A", "College B"] or []
   filterColumn = null, // index of column used for filter
 }) {
@@ -169,6 +171,51 @@ export default function Table({
     console.warn("No onDelete or deleteEndpoint provided to Table.");
   };
 
+  // handle updates coming from InfoCard (Save)
+  const handleUpdate = async (originalValues, editedValues) => {
+    try {
+      const id = originalValues && originalValues[0];
+      if (!id) return;
+
+      // optimistic local update
+      setData((prev) => prev.map((r) => (r && r[0] === id ? editedValues : r)));
+      setVisibleInfoCard(false);
+
+      // If an updateEndpoint is provided, attempt to PUT the change
+      if (updateEndpoint) {
+        const url =
+          typeof updateEndpoint === "function"
+            ? updateEndpoint(originalValues, editedValues)
+            : `${updateEndpoint}/${encodeURIComponent(id)}`;
+
+        // construct payload from headers -> editedValues (best-effort)
+        const payload = {};
+        for (let i = 0; i < headers.length; i++) {
+          const key = headers[i] || `col_${i}`;
+          payload[key] = editedValues[i];
+        }
+
+        const res = await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`Update failed: ${res.status} ${body}`);
+        }
+      } else {
+        // if no endpoint, optionally call onRefresh to let parent re-sync
+        if (typeof onRefresh === "function") await onRefresh();
+      }
+    } catch (err) {
+      console.error("Update error:", err);
+      // On failure, try to re-sync from server if possible
+      if (typeof onRefresh === "function") await onRefresh();
+    }
+  };
+
   return (
     <>
       <InfoCard
@@ -176,6 +223,9 @@ export default function Table({
         values={rowValue}
         headers={headers}
         onDelete={handleDelete}
+        updateEndpoint={updateEndpoint}
+        onRefresh={onRefresh}
+        onUpdate={onUpdate || handleUpdate}
       />
 
       <div

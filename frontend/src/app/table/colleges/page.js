@@ -19,7 +19,20 @@ export default function Colleges() {
   const submitForm = async () => {
     const parts = [college_code, college_name].map(encodeURIComponent);
     const res = await fetch(`${API_BASE}/insert/college/${parts.join("/")}`);
-    if (res.ok) { await updateTableData(); clearFields(); } else console.error(await res.text());
+    if (res.ok) {
+      await updateTableData();
+      clearFields();
+    } else {
+      let errTxt = "";
+      try {
+        const j = await res.json();
+        errTxt = j && j.error ? j.error : JSON.stringify(j);
+      } catch (e) {
+        errTxt = await res.text();
+      }
+      alert(`Error inserting college: ${errTxt}`);
+      console.error(errTxt);
+    }
   };
 
   const clearFields = () => { set_college_code(""); set_college_name(""); };

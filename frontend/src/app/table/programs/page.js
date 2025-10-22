@@ -26,7 +26,15 @@ export default function Programs() {
       await updateTableData();
       clearFields();
     } else {
-      console.error(await res.text());
+      let errTxt = "";
+      try {
+        const j = await res.json();
+        errTxt = j && j.error ? j.error : JSON.stringify(j);
+      } catch (e) {
+        errTxt = await res.text();
+      }
+      alert(`Error inserting program: ${errTxt}`);
+      console.error(errTxt);
     }
   };
 
@@ -58,6 +66,36 @@ export default function Programs() {
     else console.error(await res.text());
   };
 
+  // handle update from InfoCard
+  const handleUpdate = async (originalValues, editedValues) => {
+    const originalCode = originalValues && originalValues[0];
+    if (!originalCode) return;
+
+    // headers: [Code, Name, College]
+    const payload = {
+      code: editedValues[0],
+      name: editedValues[1],
+      college: editedValues[2],
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/update/program/${encodeURIComponent(originalCode)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Update failed: ${res.status} ${body}`);
+      }
+      await updateTableData();
+    } catch (err) {
+      console.error("Program update error:", err);
+      await updateTableData();
+    }
+  };
+
   return (
     <>
       <InsertForm
@@ -74,6 +112,7 @@ export default function Programs() {
         headers={["Code", "Name", "College"]}
         table_data={table_data}
         onDelete={handleDelete}
+        onUpdate={handleUpdate}
         // enable filter by college (college column index is 2)
         filterOptions={collegeOptions}
         filterColumn={2}

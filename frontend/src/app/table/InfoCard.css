@@ -9,7 +9,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 1;
+    z-index: 40;
 }
 
 .pop-up {
@@ -17,15 +17,17 @@
     padding-bottom: 10px;
     max-height: 600px;
     width: 500px;
-    background-color: var(--color-background);
-    border: 1px dashed var(--border-color-2);
+    /* InfoCard background set to accent */
+    background-color: #0b5560;
+    color: var(--color-background); /* keep text readable on dark bg */
+    border: 1px dashed rgba(255,255,255,0.12);
     border-radius: 10px;
 
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 1;
+    z-index: 50;
 }
 
 .header-pop-up {
@@ -46,4 +48,9 @@
 
 .info-card-data input {
     width: 300px;
+    background-color: #f3f6f7; /* contrast input against dark card */
+    color: #062424; /* dark text on light input */
+    border: 1px solid rgba(0,0,0,0.08);
+    padding: 6px 8px;
+    border-radius: 6px;
 }

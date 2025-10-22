@@ -25,7 +25,20 @@ export default function Students() {
     if (!/^\d{4}-\d{4}$/.test(student_id)) { console.error("Invalid ID"); return; }
     const parts = [student_id, first_name, last_name, course, year, gender].map(encodeURIComponent);
     const res = await fetch(`${API_BASE}/insert/student/${parts.join("/")}`);
-    if (res.ok) { await updateTableData(); clearFields(); } else console.error(await res.text());
+    if (res.ok) {
+      await updateTableData();
+      clearFields();
+    } else {
+      let errTxt = "";
+      try {
+        const j = await res.json();
+        errTxt = j && j.error ? j.error : JSON.stringify(j);
+      } catch (e) {
+        errTxt = await res.text();
+      }
+      alert(`Error inserting student: ${errTxt}`);
+      console.error(errTxt);
+    }
   };
 
   const clearFields = () => {
@@ -52,6 +65,39 @@ export default function Students() {
     if (res.ok) await updateTableData(); else console.error(await res.text());
   };
 
+  // handle update from InfoCard: originalValues, editedValues
+  const handleUpdate = async (originalValues, editedValues) => {
+    const originalId = originalValues && originalValues[0];
+    if (!originalId) return;
+
+    // map editedValues according to headers: [ID, First Name, Last Name, Course, Year, Gender]
+    const payload = {
+      id: editedValues[0],
+      first_name: editedValues[1],
+      last_name: editedValues[2],
+      course: editedValues[3],
+      year: editedValues[4],
+      gender: editedValues[5],
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/update/student/${encodeURIComponent(originalId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Update failed: ${res.status} ${body}`);
+      }
+      await updateTableData();
+    } catch (err) {
+      console.error("Student update error:", err);
+      await updateTableData();
+    }
+  };
+
   return (
     <>
       <InsertForm
@@ -71,6 +117,7 @@ export default function Students() {
         headers={["ID", "First Name", "Last Name", "Course", "Year", "Gender"]}
         table_data={table_data}
         onDelete={handleDelete}
+        onUpdate={handleUpdate}
         // enable filter by program (course) - column index 3
         filterOptions={programOptions}
         filterColumn={3}

@@ -11,6 +11,8 @@ export default function InfoCard({
   headers = [],
   onDelete = null,
   onUpdate = null, // New prop for handling updates
+  updateEndpoint = null, // optional endpoint string for PUT updates
+  onRefresh = null, // optional callback to refresh parent data after update
 }) {
   const [visible, setVisible] = visibility;
   const [isEditing, setIsEditing] = useState(false);
@@ -41,6 +43,28 @@ export default function InfoCard({
     if (typeof onUpdate === "function") {
       await onUpdate(values, editedValues); // Pass original and new values
       setIsEditing(false); // Exit edit mode on successful save
+    } else if (typeof updateEndpoint === "string" && updateEndpoint.length > 0) {
+      // Build payload from headers -> values mapping (best-effort)
+      const payload = {};
+      for (let i = 0; i < headers.length; i++) {
+        const key = headers[i] || `col_${i}`;
+        payload[key] = editedValues[i];
+      }
+
+      try {
+        const res = await fetch(updateEndpoint, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error(`Update failed: ${res.status}`);
+        setIsEditing(false);
+        if (typeof onRefresh === "function") onRefresh();
+      } catch (err) {
+        console.error("InfoCard update error:", err);
+        // keep editing mode so user can retry
+      }
     } else {
       console.warn("No onUpdate function provided to InfoCard.");
     }
@@ -61,7 +85,7 @@ export default function InfoCard({
   return (
     <>
       <div className="bg-pop-up" onClick={() => setVisible(false)} />
-      <div className="pop-up">
+      <div className="pop-up" onClick={(e) => e.stopPropagation()}>
         <div className="header-pop-up">
           <HeaderButton onClick={() => setVisible(false)} style={{ borderTopRightRadius: "10px", width: "45px" }}>
             <Image src="/close.svg" alt="Close" width={28} height={28} className="invert" />
