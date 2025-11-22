@@ -4,6 +4,13 @@ import Image from "next/image";
 import HeaderButton from "../HeaderButton";
 import InfoCardData from "./InfoCardData";
 import "./InfoCard.css";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+} from "../../components/ui/dialog";
 
 export default function InfoCard({
   visibility = [false, () => {}],
@@ -80,12 +87,9 @@ export default function InfoCard({
     }
   };
 
-  if (!visible) return null;
-
   return (
-    <>
-      <div className="bg-pop-up" onClick={() => setVisible(false)} />
-      <div className="pop-up" onClick={(e) => e.stopPropagation()}>
+    <Dialog open={visible} onOpenChange={(open) => setVisible(open)}>
+      <DialogContent>
         <div className="header-pop-up">
           <HeaderButton onClick={() => setVisible(false)} style={{ borderTopRightRadius: "10px", width: "45px" }}>
             <Image src="/close.svg" alt="Close" width={28} height={28} className="invert" />
@@ -127,7 +131,7 @@ export default function InfoCard({
         ) : (
           <div className="info-empty">No data</div>
         )}
-      </div>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

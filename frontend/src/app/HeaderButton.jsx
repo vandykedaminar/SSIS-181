@@ -1,21 +1,19 @@
 import './HeaderButton.css'
 import Link from 'next/link'
+import Button from '../components/ui/Button'
 
 function HeaderButton({ children, myLink, onClick, style }) {
     if (myLink) {
         return (
-            <Link href={myLink} className='header-button' style={style}>
-                {children}
+            <Link href={myLink} style={style}>
+                <Button variant="ghost" className="ml-2">{children}</Button>
             </Link>
-        );        
+        );
     }
 
     return (
-        <button onClick={onClick} className='header-button' style={style}>
-            {children}
-        </button>
-    );        
-
+        <Button onClick={onClick} style={style} variant="ghost">{children}</Button>
+    );
 }
 
 export default HeaderButton;

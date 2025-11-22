@@ -51,10 +51,49 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  /* keep controls only as wide as their content so the title stays centered */
   flex: 0 0 auto;
+  flex-wrap: wrap;
 }
 
+/* make the first child (search) flexible so it grows while selects stay compact */
+.header-controls > div:first-child {
+  flex: 1 1 220px;
+  min-width: 120px;
+}
+
+/* select triggers remain compact but can expand on small screens */
+.select-trigger {
+  flex: 0 0 auto;
+  max-width: 220px;
+}
+
+/* hide inline controls on narrow screens; show Filters toggle */
+.controls-inline { display: flex; }
+.filters-toggle { display: none; }
+.filters-popover { display: none; }
+
+@media (max-width: 720px) {
+  .controls-inline { display: none; }
+  .filters-toggle { display: inline-flex; }
+
+  .filters-popover {
+    display: none;
+    position: absolute;
+    right: 8px;
+    top: calc(100% + 8px);
+    z-index: 60;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(2,6,23,0.16);
+    min-width: 200px;
+  }
+
+  .filters-popover.open { display: block; }
+}
 /* Insert form column styling (white) */
 .insert-column {
   background: var(--surface);
@@ -63,10 +102,11 @@
   border-radius: 8px;
 }
 
-/* Table column and table background white */
+/* Table column and table background (dark tokens) */
 .table-column,
 .my-table {
-  background: var(--surface);
+  background: var(--card);
+  color: var(--card-foreground);
 }
 
 /* main table */
@@ -85,35 +125,71 @@
 
 .my-table thead th {
   padding: 12px 14px;
-  background: rgba(0,0,0,0.04);
+  background: var(--input); /* slight contrast for header row */
   font-weight: 700;
   text-align: center;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--foreground);
+  border-bottom: 1px solid var(--border);
+  color: var(--card-foreground);
 }
 
 .my-table tbody td {
-  padding: 10px 12px;
+  padding: 12px 14px;
   text-align: center;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--foreground);
+  border-bottom: 1px solid var(--border);
+  color: var(--card-foreground);
+}
+
+.my-table tbody tr {
+  transition: background-color 160ms ease, transform 120ms ease;
 }
 
 .my-table tbody tr:hover {
-  background: rgba(0,0,0,0.03);
+  background: var(--ui-color);
+  transform: translateY(-1px);
   cursor: pointer;
 }
 
-/* search input darker background for legibility */
+.my-table tbody tr:focus {
+  outline: 2px solid rgba(11,85,96,0.18);
+  outline-offset: 2px;
+}
+
+/* subtle zebra striping for readability */
+.my-table tbody tr:nth-child(odd) {
+  background: rgba(2,6,23,0.01);
+}
+
+/* search input: use dark input token */
 .search-bar input[type="search"] {
-  width: 320px;
+  width: 100%;
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.08);
-  background: #e6eef8;
+  border: 1px solid var(--border);
+  background: var(--input);
   color: var(--foreground);
   outline: none;
 }
+
+/* clear button inside search input */
+.search-bar { position: relative; }
+.search-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid rgba(0,0,0,0.06);
+  color: var(--foreground);
+  cursor: pointer;
+}
+.search-clear:hover { background: rgba(0,0,0,0.04); }
+.search-clear svg { display: block; }
 
 /* responsive */
 @media (max-width: 920px) {
@@ -122,6 +198,47 @@
   }
   .table-header .left-spacer { display: none; }
   .search-bar input[type="search"] { width: 100%; }
+
+  /* allow select triggers to expand to full width on narrow screens */
+  .select-trigger { max-width: 100%; flex: 1 1 160px; }
+}
+
+/* Mobile: convert table rows into card-like blocks for readability */
+@media (max-width: 720px) {
+  .my-table table,
+  .my-table thead,
+  .my-table tbody,
+  .my-table th,
+  .my-table td,
+  .my-table tr {
+    display: block;
+  }
+
+  .my-table thead tr { display: none; }
+
+  .my-table tbody tr {
+    margin: 10px 0;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    background: var(--surface);
+    box-shadow: 0 1px 4px rgba(2,6,23,0.04);
+  }
+
+  .my-table tbody td {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: none;
+    text-align: left;
+  }
+
+  .my-table tbody td::before {
+    content: attr(data-label) ":";
+    color: var(--muted);
+    font-weight: 600;
+    margin-right: 8px;
+  }
 }
 
 /* pager styles */
@@ -147,18 +264,19 @@
 }
 
 .pager-btn {
-  padding: 6px 10px;
+  padding: 6px 8px;
   border-radius: 6px;
-  border: 1px solid rgba(0,0,0,0.08);
-  background: #fff;
-  color: var(--foreground);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
   cursor: pointer;
-  min-width: 40px;
+  min-width: 36px;
+  font-size: 0.9rem;
 }
 
 .pager-btn:hover:not(:disabled) {
   background: var(--accent);
-  color: #fff;
+  color: var(--primary-foreground);
   border-color: var(--accent-dark);
 }
 
@@ -169,6 +287,14 @@
 
 .pager-btn.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--primary-foreground);
   border-color: var(--accent-dark);
+}
+
+/* row actions placeholder (if we add per-row buttons later) */
+.row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
 }

@@ -1,11 +1,13 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 import re
 
 app = Flask(__name__)
-CORS(app)
+app.secret_key = "dev-secret-change-me"
+# allow credentials so the frontend can send/receive session cookie
+CORS(app, supports_credentials=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgre2314@localhost:5432/postgres'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -14,6 +16,36 @@ db = SQLAlchemy(app)
 @app.route("/")
 def hello_world():
     return "Hello, World!"
+
+
+@app.route('/auth/login', methods=['POST'])
+def auth_login():
+    try:
+        data = request.get_json() or {}
+        email = data.get('email')
+        password = data.get('password')
+        # demo credentials (do NOT use in production)
+        if email == 'vandykedaminar@gmail.com' and password == 'password':
+            session['authenticated'] = True
+            session['email'] = email
+            resp = jsonify({"authenticated": True, "email": email})
+            return resp, 200
+        return jsonify({"authenticated": False}), 401
+    except Exception as e:
+        print('Auth login error:', e)
+        return jsonify({"authenticated": False, "error": "server_error"}), 500
+
+
+@app.route('/auth/status')
+def auth_status():
+    auth = bool(session.get('authenticated'))
+    return jsonify({"authenticated": auth, "email": session.get('email') if auth else None})
+
+
+@app.route('/auth/logout', methods=['POST'])
+def auth_logout():
+    session.clear()
+    return jsonify({"ok": True}), 200
 
 
 # MODELS

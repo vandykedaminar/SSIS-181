@@ -3,6 +3,8 @@ import "./globals.css";
 import "./HeaderButton"
 import HeaderButton from "./HeaderButton";
 import HeaderDropdownMenu from "./HeaderDropdownMenu";
+import { ToastProvider } from "../components/ToastContext";
+import { Card } from '../components/ui/Card'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,16 +27,16 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <header>
-          <div className="my-header">
+          <Card className="my-header">
             <HeaderButton myLink={"/table/colleges"}> College </HeaderButton>
             <HeaderButton myLink={"/table/programs"}> Programs </HeaderButton>
             <HeaderButton myLink={"/table/students"}> Students </HeaderButton>
-            
-
-          </div>
+          </Card>
         </header>
         <main className="my-main">
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </main>
       </body>
     </html>

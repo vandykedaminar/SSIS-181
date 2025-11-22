@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Table from "../page";
 import InsertForm from "../InsertForm";
+import { useToast } from '../../../components/ToastContext';
 
 const API_BASE = "http://192.168.1.9:5000"; // adjust if needed
 
@@ -21,13 +22,16 @@ export default function Students() {
     set_table_data(result);
   };
 
+  const { showToast } = useToast();
+
   const submitForm = async () => {
-    if (!/^\d{4}-\d{4}$/.test(student_id)) { console.error("Invalid ID"); return; }
+    if (!/^\d{4}-\d{4}$/.test(student_id)) { showToast('Invalid ID format. Must be YYYY-NNNN.', { type: 'error' }); return; }
     const parts = [student_id, first_name, last_name, course, year, gender].map(encodeURIComponent);
     const res = await fetch(`${API_BASE}/insert/student/${parts.join("/")}`);
     if (res.ok) {
       await updateTableData();
       clearFields();
+      showToast('Student inserted', { type: 'success' });
     } else {
       let errTxt = "";
       try {
@@ -36,7 +40,7 @@ export default function Students() {
       } catch (e) {
         errTxt = await res.text();
       }
-      alert(`Error inserting student: ${errTxt}`);
+      showToast(`Error inserting student: ${errTxt}`, { type: 'error' });
       console.error(errTxt);
     }
   };
@@ -92,8 +96,10 @@ export default function Students() {
         throw new Error(`Update failed: ${res.status} ${body}`);
       }
       await updateTableData();
+      showToast('Student updated', { type: 'success' });
     } catch (err) {
       console.error("Student update error:", err);
+      showToast(`Update failed: ${err.message}`, { type: 'error' });
       await updateTableData();
     }
   };

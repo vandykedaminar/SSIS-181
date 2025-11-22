@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Table from "../page";
 import InsertForm from "../InsertForm";
+import { useToast } from '../../../components/ToastContext';
 
 const API_BASE = "http://192.168.1.9:5000"; // adjust if needed
 
@@ -19,12 +20,15 @@ export default function Programs() {
     set_table_data(result);
   };
 
+  const { showToast } = useToast();
+
   const submitForm = async () => {
     const parts = [program_code, program_name, program_college].map(encodeURIComponent);
     const res = await fetch(`${API_BASE}/insert/program/${parts.join("/")}`);
     if (res.ok) {
       await updateTableData();
       clearFields();
+      showToast('Program inserted', { type: 'success' });
     } else {
       let errTxt = "";
       try {
@@ -33,7 +37,7 @@ export default function Programs() {
       } catch (e) {
         errTxt = await res.text();
       }
-      alert(`Error inserting program: ${errTxt}`);
+      showToast(`Error inserting program: ${errTxt}`, { type: 'error' });
       console.error(errTxt);
     }
   };
@@ -89,10 +93,12 @@ export default function Programs() {
         const body = await res.text();
         throw new Error(`Update failed: ${res.status} ${body}`);
       }
-      await updateTableData();
+        await updateTableData();
+        showToast('Program updated', { type: 'success' });
     } catch (err) {
       console.error("Program update error:", err);
-      await updateTableData();
+        showToast(`Update failed: ${err.message}`, { type: 'error' });
+        await updateTableData();
     }
   };
 

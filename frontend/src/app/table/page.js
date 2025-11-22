@@ -5,6 +5,15 @@ import "./table.css";
 import InsertForm from "./InsertForm";
 import InfoCard from "./InfoCard";
 import SearchBar from "./SearchBar";
+import Button from '../../components/ui/Button'
+import { Card, CardHeader, CardContent } from '../../components/ui/Card'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '../../components/ui/select'
 
 export default function Table({
   table_name = "Table",
@@ -29,6 +38,7 @@ export default function Table({
 
   // filter state (selected value from filterOptions)
   const [filterValue, setFilterValue] = useState("");
+  const [showFiltersMenu, setShowFiltersMenu] = useState(false);
 
   // pagination
   const PAGE_SIZE = 50;
@@ -120,14 +130,16 @@ export default function Table({
 
     for (let i = start; i <= end; i++) {
       pages.push(
-        <button
+        <Button
           key={i}
-          className={`pager-btn ${i === currentPage ? "active" : ""}`}
+          className={`${i === currentPage ? "pager-btn active" : "pager-btn"}`}
           onClick={() => changePage(i)}
+          size="sm"
           aria-current={i === currentPage ? "page" : undefined}
+          variant={i === currentPage ? 'secondary' : 'ghost'}
         >
           {i}
-        </button>
+        </Button>
       );
     }
     return pages;
@@ -228,66 +240,98 @@ export default function Table({
         onUpdate={onUpdate || handleUpdate}
       />
 
-      <div
-        className="table-header-bar"
-        style={{
-          background: "var(--accent, #3b3b3b)",
-          padding: "14px 20px",
-          borderRadius: 0,
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 12,
-        }}
-      >
-        <div style={{ width: 72 }} />
-        <div style={{ flex: 1, textAlign: "center", fontWeight: 700, fontSize: 18 }}>{table_name}</div>
+      <Card className="mb-4">
+          <CardHeader className="flex items-center gap-4" style={{ alignItems: 'center' }}>
+          <div style={{ width: 72 }} />
+          <div style={{ flex: 1, textAlign: "center", fontWeight: 700, fontSize: 18 }}>{table_name}</div>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 320 }}>
-          <div style={{ width: 260 }}>
-            <SearchBar value={query} onChange={setQuery} placeholder={`Search ${table_name}`} />
+          <div className="header-controls" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ width: 260, minWidth: 120 }}>
+              <SearchBar value={query} onChange={setQuery} placeholder={`Search ${table_name}`} />
+            </div>
+
+            <div className="controls-inline" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Select onValueChange={(val) => setSortColumn(Number(val))}>
+                <SelectTrigger className="select-trigger w-40">
+                  <SelectValue placeholder="Sort column" />
+                </SelectTrigger>
+                <SelectContent>
+                  {headers.map((h, i) => (
+                    <SelectItem key={i} value={String(i)}>{h}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select onValueChange={(val) => setSortDirection(val)}>
+                <SelectTrigger className="select-trigger w-28">
+                  <SelectValue placeholder="Direction" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asc">Asc</SelectItem>
+                  <SelectItem value="desc">Desc</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {filterOptions && filterColumn !== null && (
+                <Select onValueChange={(val) => setFilterValue(val === 'ALL' ? '' : val)}>
+                  <SelectTrigger className="select-trigger w-40">
+                    <SelectValue placeholder="Filter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All</SelectItem>
+                    {filterOptions.map((opt, idx) => (
+                      <SelectItem key={idx} value={String(opt)}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Filters toggle for small screens */}
+            <Button className="filters-toggle" variant="ghost" size="sm" onClick={() => setShowFiltersMenu(!showFiltersMenu)} aria-expanded={showFiltersMenu}>Filters</Button>
+
+            {/* Popover rendered on small screens when toggled (duplicate controls for responsive behavior) */}
+            <div className={`filters-popover ${showFiltersMenu ? 'open' : ''}`} role="dialog" aria-hidden={!showFiltersMenu}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Select onValueChange={(val) => setSortColumn(Number(val))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sort column" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {headers.map((h, i) => (
+                      <SelectItem key={i} value={String(i)}>{h}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select onValueChange={(val) => setSortDirection(val)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Direction" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asc">Asc</SelectItem>
+                    <SelectItem value="desc">Desc</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {filterOptions && filterColumn !== null && (
+                  <Select onValueChange={(val) => setFilterValue(val === 'ALL' ? '' : val)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Filter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All</SelectItem>
+                      {filterOptions.map((opt, idx) => (
+                        <SelectItem key={idx} value={String(opt)}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
           </div>
-
-          <select
-            aria-label="Sort column"
-            value={sortColumn}
-            onChange={(e) => setSortColumn(Number(e.target.value))}
-            style={{ padding: "8px 10px", borderRadius: 6 }}
-          >
-            {headers.map((h, i) => (
-              <option key={i} value={i}>
-                {h}
-              </option>
-            ))}
-          </select>
-
-          <select
-            aria-label="Sort direction"
-            value={sortDirection}
-            onChange={(e) => setSortDirection(e.target.value)}
-            style={{ padding: "8px 10px", borderRadius: 6 }}
-          >
-            <option value="asc">Asc</option>
-            <option value="desc">Desc</option>
-          </select>
-
-          {filterOptions && filterColumn !== null && (
-            <select
-              aria-label="Filter"
-              value={filterValue}
-              onChange={(e) => setFilterValue(e.target.value)}
-              style={{ padding: "8px 10px", borderRadius: 6 }}
-            >
-              <option value="">All</option>
-              {filterOptions.map((opt, idx) => (
-                <option key={idx} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      </div>
+        </CardHeader>
+      </Card>
 
       <div className="my-table">
         <table>
@@ -303,15 +347,24 @@ export default function Table({
             {pageRows.map((row, rowIdx) => (
               <tr
                 key={pageStart + rowIdx}
-                className="h-10 college"
+                className="h-10 college table-row"
+                tabIndex={0}
+                role="button"
                 onClick={() => {
                   setVisibleInfoCard(true);
                   setRowValue(row);
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setVisibleInfoCard(true);
+                    setRowValue(row);
+                  }
+                }}
               >
-                {headers.map((_, colIdx) => (
-                  <td key={colIdx}>{row && row[colIdx] !== undefined && row[colIdx] !== null ? row[colIdx] : ""}</td>
-                ))}
+                    {headers.map((_, colIdx) => (
+                      <td key={colIdx} data-label={String(headers[colIdx] || `col_${colIdx}`)}>{row && row[colIdx] !== undefined && row[colIdx] !== null ? row[colIdx] : ""}</td>
+                    ))}
               </tr>
             ))}
             {pageRows.length === 0 && (
@@ -330,21 +383,13 @@ export default function Table({
           </div>
 
           <div className="pagination-controls" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-            <button className="pager-btn" onClick={() => changePage(1)} disabled={currentPage === 1}>
-              First
-            </button>
-            <button className="pager-btn" onClick={() => changePage(currentPage - 1)} disabled={currentPage === 1}>
-              Prev
-            </button>
+            <Button className="pager-btn" size="sm" onClick={() => changePage(1)} disabled={currentPage === 1} variant="ghost">First</Button>
+            <Button className="pager-btn" size="sm" onClick={() => changePage(currentPage - 1)} disabled={currentPage === 1} variant="ghost">Prev</Button>
 
             {renderPageButtons()}
 
-            <button className="pager-btn" onClick={() => changePage(currentPage + 1)} disabled={currentPage === totalPages}>
-              Next
-            </button>
-            <button className="pager-btn" onClick={() => changePage(totalPages)} disabled={currentPage === totalPages}>
-              Last
-            </button>
+            <Button className="pager-btn" size="sm" onClick={() => changePage(currentPage + 1)} disabled={currentPage === totalPages} variant="ghost">Next</Button>
+            <Button className="pager-btn" size="sm" onClick={() => changePage(totalPages)} disabled={currentPage === totalPages} variant="ghost">Last</Button>
           </div>
         </div>
       </div>

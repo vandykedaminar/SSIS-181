@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Table from "../page";
 import InsertForm from "../InsertForm";
+import { useToast } from '../../../components/ToastContext';
 
 const API_BASE = "http://192.168.1.9:5000";
 
@@ -16,12 +17,15 @@ export default function Colleges() {
     set_table_data(result);
   };
 
+  const { showToast } = useToast();
+
   const submitForm = async () => {
     const parts = [college_code, college_name].map(encodeURIComponent);
     const res = await fetch(`${API_BASE}/insert/college/${parts.join("/")}`);
     if (res.ok) {
       await updateTableData();
       clearFields();
+      showToast('College inserted', { type: 'success' });
     } else {
       let errTxt = "";
       try {
@@ -30,7 +34,7 @@ export default function Colleges() {
       } catch (e) {
         errTxt = await res.text();
       }
-      alert(`Error inserting college: ${errTxt}`);
+      showToast(`Error inserting college: ${errTxt}`, { type: 'error' });
       console.error(errTxt);
     }
   };
@@ -61,11 +65,12 @@ export default function Colleges() {
     });
 
     if (res.ok) {
-        await updateTableData();
+      await updateTableData();
+      showToast('College updated', { type: 'success' });
     } else {
-        const err_txt = await res.text();
-        console.error("Update failed:", err_txt);
-        alert(`Update failed: ${err_txt}`); // Show error to user
+      const err_txt = await res.text();
+      console.error("Update failed:", err_txt);
+      showToast(`Update failed: ${err_txt}`, { type: 'error' });
     }
   };
 
