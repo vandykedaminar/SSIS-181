@@ -38,7 +38,6 @@ export default function Table({
 
   // filter state (selected value from filterOptions)
   const [filterValue, setFilterValue] = useState("");
-  const [showFiltersMenu, setShowFiltersMenu] = useState(false);
 
   // pagination
   const PAGE_SIZE = 50;
@@ -250,85 +249,40 @@ export default function Table({
               <SearchBar value={query} onChange={setQuery} placeholder={`Search ${table_name}`} />
             </div>
 
-            <div className="controls-inline" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <Select onValueChange={(val) => setSortColumn(Number(val))}>
+            <Select onValueChange={(val) => setSortColumn(Number(val))}>
+              <SelectTrigger className="select-trigger w-40">
+                <SelectValue placeholder="Sort column" />
+              </SelectTrigger>
+              <SelectContent>
+                {headers.map((h, i) => (
+                  <SelectItem key={i} value={String(i)}>{h}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select onValueChange={(val) => setSortDirection(val)}>
+              <SelectTrigger className="select-trigger w-28">
+                <SelectValue placeholder="Direction" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asc">Asc</SelectItem>
+                <SelectItem value="desc">Desc</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {filterOptions && filterColumn !== null && (
+              <Select onValueChange={(val) => setFilterValue(val === 'ALL' ? '' : val)}>
                 <SelectTrigger className="select-trigger w-40">
-                  <SelectValue placeholder="Sort column" />
+                  <SelectValue placeholder="Filter" />
                 </SelectTrigger>
                 <SelectContent>
-                  {headers.map((h, i) => (
-                    <SelectItem key={i} value={String(i)}>{h}</SelectItem>
+                  <SelectItem value="ALL">All</SelectItem>
+                  {filterOptions.map((opt, idx) => (
+                    <SelectItem key={idx} value={String(opt)}>{opt}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
-              <Select onValueChange={(val) => setSortDirection(val)}>
-                <SelectTrigger className="select-trigger w-28">
-                  <SelectValue placeholder="Direction" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="asc">Asc</SelectItem>
-                  <SelectItem value="desc">Desc</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {filterOptions && filterColumn !== null && (
-                <Select onValueChange={(val) => setFilterValue(val === 'ALL' ? '' : val)}>
-                  <SelectTrigger className="select-trigger w-40">
-                    <SelectValue placeholder="Filter" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All</SelectItem>
-                    {filterOptions.map((opt, idx) => (
-                      <SelectItem key={idx} value={String(opt)}>{opt}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Filters toggle for small screens */}
-            <Button className="filters-toggle" variant="ghost" size="sm" onClick={() => setShowFiltersMenu(!showFiltersMenu)} aria-expanded={showFiltersMenu}>Filters</Button>
-
-            {/* Popover rendered on small screens when toggled (duplicate controls for responsive behavior) */}
-            <div className={`filters-popover ${showFiltersMenu ? 'open' : ''}`} role="dialog" aria-hidden={!showFiltersMenu}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Select onValueChange={(val) => setSortColumn(Number(val))}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Sort column" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {headers.map((h, i) => (
-                      <SelectItem key={i} value={String(i)}>{h}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select onValueChange={(val) => setSortDirection(val)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Direction" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="asc">Asc</SelectItem>
-                    <SelectItem value="desc">Desc</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {filterOptions && filterColumn !== null && (
-                  <Select onValueChange={(val) => setFilterValue(val === 'ALL' ? '' : val)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Filter" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All</SelectItem>
-                      {filterOptions.map((opt, idx) => (
-                        <SelectItem key={idx} value={String(opt)}>{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </CardHeader>
       </Card>

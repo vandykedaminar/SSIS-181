@@ -1,14 +1,11 @@
-
 .insert {
-    /* background-color: var(--color-background); */
     backdrop-filter: blur(3px);
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
+    /* Removed fixed borders/backgrounds to let the Card component handle it */
 }
 
 .insert-header {
     background-color: #0b5560;
-    height: 35px;
+    height: 45px; /* Increased slightly */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -19,26 +16,15 @@
 }
 
 .insert-inputs {
-    margin-left: auto;
-    margin-right: auto;
-    margin-top: 10px;
-    margin-bottom: 10px;
+    margin: 0;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    max-width: 300px;
-    border: 2px solid rgb(117, 117, 117);
-    border-radius: 7px;
-    background-color: var(--color-background);
+    /* Removed max-width: 300px to allow it to fill the modal */
+    width: 100%; 
+    background-color: var(--card);
 }
 
 .insert-inputs div {
-    margin-top: 10px;
-}
-
-.insert button {
-    margin-top: 10px;
-    margin-bottom: 10px;
-    border-radius: 10px;
-    background-color: var(--color-emerald-700);
+    width: 100%;
 }

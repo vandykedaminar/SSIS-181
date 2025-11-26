@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Table from "../page";
-import InsertForm from "../InsertForm";
+import InsertDialog from "../InsertDialog"; // Changed import
 import { useToast } from '../../../components/ToastContext';
 
 const API_BASE = "http://192.168.1.9:5000";
@@ -23,8 +23,6 @@ export default function Colleges() {
     const parts = [college_code, college_name].map(encodeURIComponent);
     const res = await fetch(`${API_BASE}/insert/college/${parts.join("/")}`);
     if (res.ok) {
-      await updateTableData();
-      clearFields();
       showToast('College inserted', { type: 'success' });
     } else {
       let errTxt = "";
@@ -76,7 +74,14 @@ export default function Colleges() {
 
   return (
     <>
-      <InsertForm fields={[["Code: ", college_code, set_college_code], ["Name: ", college_name, set_college_name]]} functions={[updateTableData, submitForm, clearFields]} />
+      <div className="flex justify-end mb-4 px-4">
+        <InsertDialog 
+          label="Add College"
+          formName="New College"
+          fields={[["Code: ", college_code, set_college_code], ["Name: ", college_name, set_college_name]]} 
+          functions={[updateTableData, submitForm, clearFields]} 
+        />
+      </div>
       <Table table_name={"College Table"} headers={["Code", "Name"]} table_data={table_data} onDelete={handleDelete} onUpdate={handleUpdate} />
     </>
   );

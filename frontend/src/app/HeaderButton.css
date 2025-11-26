@@ -10,4 +10,4 @@
 /* keep header button spacing consistent with theme tokens when extra helpers needed */
 .header-buttons .btn, .header-buttons button, .header-buttons a {
   min-width: 96px;
-}
+} 

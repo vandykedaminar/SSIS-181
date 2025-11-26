@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import Table from "../page";
-import InsertForm from "../InsertForm";
+import InsertDialog from "../InsertDialog";
 import { useToast } from '../../../components/ToastContext';
+import { supabase } from "../../../lib/supabaseClient"; 
 
-const API_BASE = "http://192.168.1.9:5000"; // adjust if needed
+const API_BASE = "http://192.168.1.9:5000"; 
 
 export default function Students() {
   const [student_id, set_student_id] = useState("");
@@ -13,6 +14,7 @@ export default function Students() {
   const [course, set_course] = useState("");
   const [year, set_year] = useState("");
   const [gender, set_gender] = useState("");
+  const [photoFile, setPhotoFile] = useState(null);
 
   const [table_data, set_table_data] = useState([]);
 
@@ -25,34 +27,69 @@ export default function Students() {
   const { showToast } = useToast();
 
   const submitForm = async () => {
-    if (!/^\d{4}-\d{4}$/.test(student_id)) { showToast('Invalid ID format. Must be YYYY-NNNN.', { type: 'error' }); return; }
-    const parts = [student_id, first_name, last_name, course, year, gender].map(encodeURIComponent);
-    const res = await fetch(`${API_BASE}/insert/student/${parts.join("/")}`);
-    if (res.ok) {
-      await updateTableData();
-      clearFields();
-      showToast('Student inserted', { type: 'success' });
-    } else {
-      let errTxt = "";
-      try {
-        const j = await res.json();
-        errTxt = j && j.error ? j.error : JSON.stringify(j);
-      } catch (e) {
-        errTxt = await res.text();
-      }
-      showToast(`Error inserting student: ${errTxt}`, { type: 'error' });
-      console.error(errTxt);
+    if (!/^\d{4}-\d{4}$/.test(student_id)) { 
+        showToast('Invalid ID format. Must be YYYY-NNNN.', { type: 'error' }); 
+        return; 
+    }
+
+    let photoUrl = "";
+
+    if (photoFile) {
+        const fileName = `${Date.now()}_${photoFile.name.replace(/\s/g, '')}`;
+        const { data, error } = await supabase.storage
+            .from('student-photos')
+            .upload(fileName, photoFile);
+
+        if (error) {
+            console.error("Supabase upload error:", error);
+            showToast("Failed to upload image", { type: "error" });
+            return;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+            .from('student-photos')
+            .getPublicUrl(fileName);
+            
+        photoUrl = publicUrlData.publicUrl;
+    }
+
+    const payload = {
+        id: student_id,
+        first_name: first_name,
+        last_name: last_name,
+        course: course,
+        year: year,
+        gender: gender,
+        photo_url: photoUrl
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/insert/student`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Student inserted', { type: 'success' });
+        } else {
+            const errJson = await res.json();
+            showToast(`Error: ${errJson.error}`, { type: 'error' });
+        }
+    } catch (err) {
+        console.error("Fetch error:", err);
+        showToast("Server error", { type: "error" });
     }
   };
 
   const clearFields = () => {
-    set_student_id(""); set_first_name(""); set_last_name(""); set_course(""); set_year(""); set_gender("");
+    set_student_id(""); set_first_name(""); set_last_name(""); 
+    set_course(""); set_year(""); set_gender(""); 
+    setPhotoFile(null);
   };
 
   useEffect(() => { updateTableData(); }, []);
 
-  // build unique program list for filter dropdown (program codes stored in course column index 3? adjust if different)
-  // Note: adjust filterColumn index below if your table_data structure differs.
   const programOptions = Array.from(
     new Set(
       table_data
@@ -69,12 +106,10 @@ export default function Students() {
     if (res.ok) await updateTableData(); else console.error(await res.text());
   };
 
-  // handle update from InfoCard: originalValues, editedValues
   const handleUpdate = async (originalValues, editedValues) => {
     const originalId = originalValues && originalValues[0];
     if (!originalId) return;
 
-    // map editedValues according to headers: [ID, First Name, Last Name, Course, Year, Gender]
     const payload = {
       id: editedValues[0],
       first_name: editedValues[1],
@@ -82,6 +117,7 @@ export default function Students() {
       course: editedValues[3],
       year: editedValues[4],
       gender: editedValues[5],
+      photo_url: editedValues[6]
     };
 
     try {
@@ -106,25 +142,31 @@ export default function Students() {
 
   return (
     <>
-      <InsertForm
-        fields={[
-          ["ID: ", student_id, set_student_id],
-          ["First Name: ", first_name, set_first_name],
-          ["Last Name: ", last_name, set_last_name],
-          ["Course: ", course, set_course],
-          ["Year: ", year, set_year],
-          ["Gender: ", gender, set_gender],
-        ]}
-        functions={[updateTableData, submitForm, clearFields]}
-      />
+      <div className="flex justify-end mb-4 px-4">
+        <InsertDialog
+          label="Add Student"
+          formName="New Student"
+          fields={[
+            ["ID: ", student_id, set_student_id],
+            ["First Name: ", first_name, set_first_name],
+            ["Last Name: ", last_name, set_last_name],
+            ["Course: ", course, set_course],
+            ["Year: ", year, set_year],
+            ["Gender: ", gender, set_gender],
+            ["Photo: ", null, setPhotoFile, "file"],
+          ]}
+          functions={[updateTableData, submitForm, clearFields]}
+        />
+      </div>
 
       <Table
         table_name={"Student Table"}
+        // FIXED: Removed "Photo" from headers so it doesn't show in the table.
+        // Data still exists at index 6, but the table won't render a column for it.
         headers={["ID", "First Name", "Last Name", "Course", "Year", "Gender"]}
         table_data={table_data}
         onDelete={handleDelete}
         onUpdate={handleUpdate}
-        // enable filter by program (course) - column index 3
         filterOptions={programOptions}
         filterColumn={3}
       />

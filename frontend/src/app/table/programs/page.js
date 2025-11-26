@@ -1,11 +1,10 @@
-// filepath: [page.js](http://_vscodecontentref_/0)
 "use client";
 import { useEffect, useState } from "react";
 import Table from "../page";
-import InsertForm from "../InsertForm";
+import InsertDialog from "../InsertDialog"; // Changed import
 import { useToast } from '../../../components/ToastContext';
 
-const API_BASE = "http://192.168.1.9:5000"; // adjust if needed
+const API_BASE = "http://192.168.1.9:5000"; 
 
 export default function Programs() {
   const [program_code, set_program_code] = useState("");
@@ -26,8 +25,6 @@ export default function Programs() {
     const parts = [program_code, program_name, program_college].map(encodeURIComponent);
     const res = await fetch(`${API_BASE}/insert/program/${parts.join("/")}`);
     if (res.ok) {
-      await updateTableData();
-      clearFields();
       showToast('Program inserted', { type: 'success' });
     } else {
       let errTxt = "";
@@ -52,7 +49,6 @@ export default function Programs() {
     updateTableData();
   }, []);
 
-  // build unique college list for filter dropdown (skip null/empty)
   const collegeOptions = Array.from(
     new Set(
       table_data
@@ -70,12 +66,10 @@ export default function Programs() {
     else console.error(await res.text());
   };
 
-  // handle update from InfoCard
   const handleUpdate = async (originalValues, editedValues) => {
     const originalCode = originalValues && originalValues[0];
     if (!originalCode) return;
 
-    // headers: [Code, Name, College]
     const payload = {
       code: editedValues[0],
       name: editedValues[1],
@@ -104,14 +98,18 @@ export default function Programs() {
 
   return (
     <>
-      <InsertForm
-        fields={[
-          ["Code: ", program_code, set_program_code],
-          ["Name: ", program_name, set_program_name],
-          ["College: ", program_college, set_program_college],
-        ]}
-        functions={[updateTableData, submitForm, clearFields]}
-      />
+      <div className="flex justify-end mb-4 px-4">
+        <InsertDialog
+          label="Add Program"
+          formName="New Program"
+          fields={[
+            ["Code: ", program_code, set_program_code],
+            ["Name: ", program_name, set_program_name],
+            ["College: ", program_college, set_program_college],
+          ]}
+          functions={[updateTableData, submitForm, clearFields]}
+        />
+      </div>
 
       <Table
         table_name={"Program Table"}
@@ -119,7 +117,6 @@ export default function Programs() {
         table_data={table_data}
         onDelete={handleDelete}
         onUpdate={handleUpdate}
-        // enable filter by college (college column index is 2)
         filterOptions={collegeOptions}
         filterColumn={2}
       />
