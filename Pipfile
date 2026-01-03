@@ -4,8 +4,15 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+faker = "*"
 
 [dev-packages]
+honcho = "*"
 
 [requires]
 python_version = "3.13"
+
+[scripts]
+dev = "honcho start -f Procfile.dev"
+build = "npm run build --prefix frontend"
+start = "pipenv run python backend/app.py"

@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import Table from "../page";
-import InsertDialog from "../InsertDialog"; // Changed import
+import InsertDialog from "../InsertDialog"; 
 import { useToast } from '../../../components/ToastContext';
 
-const API_BASE = "http://192.168.1.9:5000"; 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"; 
 
 export default function Programs() {
   const [program_code, set_program_code] = useState("");
@@ -12,11 +12,28 @@ export default function Programs() {
   const [program_college, set_program_college] = useState("");
 
   const [table_data, set_table_data] = useState([]);
+  const [colleges, set_colleges] = useState([]);
 
   const updateTableData = async () => {
-    const res = await fetch(`${API_BASE}/get/programs`);
-    const result = await res.json();
-    set_table_data(result);
+    try {
+      const res = await fetch(`${API_BASE}/get/programs`);
+      if (!res.ok) throw new Error("Failed to fetch programs");
+      const result = await res.json();
+      set_table_data(result);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const updateColleges = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/get/colleges`);
+      if (!res.ok) throw new Error("Failed to fetch colleges");
+      const result = await res.json();
+      set_colleges(result);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const { showToast } = useToast();
@@ -47,15 +64,13 @@ export default function Programs() {
 
   useEffect(() => {
     updateTableData();
+    updateColleges();
   }, []);
 
-  const collegeOptions = Array.from(
-    new Set(
-      table_data
-        .map((r) => (r && r[2] !== undefined && r[2] !== null ? String(r[2]) : ""))
-        .filter((v) => v)
-    )
-  );
+  const collegeOptions = colleges.map(college => ({
+    value: college[0],
+    label: `${college[0]} - ${college[1]}`
+  }));
 
   const handleDelete = async (values) => {
     const code = values && values[0];
@@ -105,7 +120,8 @@ export default function Programs() {
           fields={[
             ["Code: ", program_code, set_program_code],
             ["Name: ", program_name, set_program_name],
-            ["College: ", program_college, set_program_college],
+            // This was already correct for the Insert Form:
+            ["College: ", program_college, set_program_college, "select", collegeOptions],
           ]}
           functions={[updateTableData, submitForm, clearFields]}
         />
@@ -119,6 +135,8 @@ export default function Programs() {
         onUpdate={handleUpdate}
         filterOptions={collegeOptions}
         filterColumn={2}
+        editDropdowns={{ 2: 'college' }} 
+        colleges={colleges} 
       />
     </>
   );

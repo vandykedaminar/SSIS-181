@@ -1,299 +1,46 @@
-from flask import Flask, jsonify, request, session
+import os
+from flask import Flask, send_from_directory
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.exc import IntegrityError
-import re
+from db import create_tables
 
-app = Flask(__name__)
+# Import Blueprints
+from routes.auth import auth_bp
+from routes.college import college_bp
+from routes.program import program_bp
+from routes.student import student_bp
+
+# --- Production Setup ---
+# Get the absolute path of the directory where this app.py file is located
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+# Construct the absolute path to the 'out' folder
+static_folder_path = os.path.join(os.path.dirname(basedir), 'frontend', 'out')
+
+# Initialize Flask, telling it where to find the static files
+app = Flask(__name__, static_folder=static_folder_path)
+
 app.secret_key = "dev-secret-change-me"
-# allow credentials so the frontend can send/receive session cookie
 CORS(app, supports_credentials=True)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgre2314@localhost:5432/postgres'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
+# Initialize Database Tables
+create_tables()
 
-@app.route("/")
-def hello_world():
-    return "Hello, World!"
+# Register API Blueprints
+app.register_blueprint(auth_bp)
+app.register_blueprint(college_bp)
+app.register_blueprint(program_bp)
+app.register_blueprint(student_bp)
 
-
-@app.route('/auth/login', methods=['POST'])
-def auth_login():
-    try:
-        data = request.get_json() or {}
-        email = data.get('email')
-        password = data.get('password')
-        # demo credentials (do NOT use in production)
-        if email == 'vandykedaminar@gmail.com' and password == 'password':
-            session['authenticated'] = True
-            session['email'] = email
-            resp = jsonify({"authenticated": True, "email": email})
-            return resp, 200
-        return jsonify({"authenticated": False}), 401
-    except Exception as e:
-        print('Auth login error:', e)
-        return jsonify({"authenticated": False, "error": "server_error"}), 500
-
-
-@app.route('/auth/status')
-def auth_status():
-    auth = bool(session.get('authenticated'))
-    return jsonify({"authenticated": auth, "email": session.get('email') if auth else None})
-
-
-@app.route('/auth/logout', methods=['POST'])
-def auth_logout():
-    session.clear()
-    return jsonify({"ok": True}), 200
-
-
-# MODELS
-class College(db.Model):
-    code = db.Column(db.String(16), primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
-    programs = db.relationship('Program', backref='college_ref', lazy=True)
-
-class Program(db.Model):
-    code = db.Column(db.String(16), primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    college_code = db.Column(db.String(16), db.ForeignKey('college.code', onupdate='CASCADE', ondelete='SET NULL'), nullable=True)
-    students = db.relationship('Student', backref='program_ref', lazy=True)
-
-class Student(db.Model):
-    id = db.Column(db.String(12), primary_key=True)
-    first_name = db.Column(db.String(80), nullable=False)
-    last_name = db.Column(db.String(80), nullable=False)
-    program_code = db.Column(db.String(16), db.ForeignKey('program.code', onupdate='CASCADE', ondelete='SET NULL'), nullable=True)
-    year = db.Column(db.String(8), nullable=False)
-    gender = db.Column(db.String(16), nullable=False)
-    # ADDED PHOTO URL
-    photo_url = db.Column(db.String(500), nullable=True)
-    
-with app.app_context():
-    db.create_all()
-
-
-# --- ROUTES ---
-
-@app.route("/insert/college/<string:code>/<string:name>")
-def insertCollege(code, name):
-    try:
-        college = College(code=code, name=name)
-        db.session.add(college)
-        db.session.commit()
-        return jsonify([college.code, college.name]), 201
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"error": f"College with code '{code}' already exists."}), 409
-    except Exception as e:
-        db.session.rollback()
-        print(f"An error occurred: {e}")
-        return jsonify({"error": "An unexpected error occurred on the server."}), 500
- 
-@app.route("/get/colleges")
-def getColleges():
-    colleges = College.query.all()
-    result = [[c.code, c.name] for c in colleges]
-    return jsonify(result)
-
-@app.route("/insert/program/<string:code>/<string:name>/<string:college>")
-def insertProgram(code, name, college):
-    try:
-        if not College.query.get(college):
-            return jsonify({"error": f"College with code '{college}' not found."}), 400
-        program = Program(code=code, name=name, college_code=college)
-        db.session.add(program)
-        db.session.commit()
-        return jsonify([program.code, program.name, program.college_code]), 201
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"error": f"Program with code '{code}' already exists."}), 409
-    except Exception as e:
-        db.session.rollback()
-        print(f"An error occurred: {e}")
-        return jsonify({"error": "An unexpected error occurred on the server."}), 500
-
-
-@app.route("/get/programs")
-def getPrograms():
-    programs = Program.query.all()
-    result = [[p.code, p.name, p.college_code] for p in programs]
-    return jsonify(result)
-
-
-# --- CHANGED: Insert Student now uses POST/JSON to handle URL safely ---
-@app.route("/insert/student", methods=["POST"])
-def insertStudent():
-    try:
-        data = request.get_json()
-        sid = data.get('id')
-        
-        if not re.match(r'^\d{4}-\d{4}$', sid):
-            return jsonify({"error": "Student ID must be in format YYYY-NNNN."}), 400
-        
-        # Check if program exists (optional validation)
-        course_code = data.get('course')
-        if course_code and not Program.query.get(course_code):
-             return jsonify({"error": f"Program '{course_code}' not found."}), 400
-
-        student = Student(
-            id=sid,
-            first_name=data.get('first_name'),
-            last_name=data.get('last_name'),
-            program_code=course_code,
-            year=data.get('year'),
-            gender=data.get('gender'),
-            photo_url=data.get('photo_url') # Save the URL
-        )
-        db.session.add(student)
-        db.session.commit()
-        return jsonify({"message": "Student added successfully"}), 201
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"error": f"Student with ID '{sid}' already exists."}), 409
-    except Exception as e:
-        db.session.rollback()
-        print(f"Insert error: {e}")
-        return jsonify({"error": "Server error"}), 500
-
-@app.route("/get/students")
-def getStudents():
-    students = Student.query.all()
-    # Included photo_url at index 6
-    result = [[s.id, s.first_name, s.last_name, s.program_code, s.year, s.gender, s.photo_url] for s in students]
-    return jsonify(result)
-
-# --- DELETE routes ---
-
-@app.route("/delete/college/<string:code>", methods=["DELETE"])
-def delete_college(code):
-    col = College.query.get(code)
-    if not col:
-        return jsonify({"error": "College not found"}), 404
-    try:
-        db.session.delete(col)
-        db.session.commit()
-        return "", 204
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/delete/program/<string:code>", methods=["DELETE"])
-def delete_program(code):
-    prog = Program.query.get(code)
-    if not prog:
-        return jsonify({"error": "Program not found"}), 404
-    try:
-        db.session.delete(prog)
-        db.session.commit()
-        return "", 204
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/delete/student/<string:sid>", methods=["DELETE"])
-def delete_student(sid):
-    student = Student.query.get(sid)
-    if not student:
-        return jsonify({"error": "Student not found"}), 404
-    try:
-        db.session.delete(student)
-        db.session.commit()
-        return "", 204
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-        
-
-# --- UPDATE routes ---
-
-@app.route("/update/college/<string:original_code>", methods=["POST"])
-def update_college(original_code):
-    college = College.query.get(original_code)
-    if not college:
-        return jsonify({"error": "College not found"}), 404
-    
-    data = request.get_json()
-    new_code = data.get('code')
-    new_name = data.get('name')
-
-    if not new_code or not new_name:
-        return jsonify({"error": "Missing 'code' or 'name' in request body"}), 400
-        
-    try:
-        college.code = new_code
-        college.name = new_name
-        db.session.commit()
-        return jsonify({"message": "College updated successfully"}), 200
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"error": f"A college with code '{new_code}' already exists."}), 409
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error updating college: {e}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
-
-
-@app.route("/update/program/<string:original_code>", methods=["POST"])
-def update_program(original_code):
-    program = Program.query.get(original_code)
-    if not program:
-        return jsonify({"error": "Program not found"}), 404
-    
-    data = request.get_json()
-    new_code = data.get('code')
-    new_name = data.get('name')
-    new_college_code = data.get('college')
-
-    if new_college_code and not College.query.get(new_college_code):
-        return jsonify({"error": f"College '{new_college_code}' does not exist."}), 400
-
-    try:
-        program.code = new_code
-        program.name = new_name
-        program.college_code = new_college_code
-        db.session.commit()
-        return jsonify({"message": "Program updated successfully"}), 200
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"error": f"A program with code '{new_code}' already exists."}), 409
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error updating program: {e}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
-
-
-@app.route("/update/student/<string:original_id>", methods=["POST"])
-def update_student(original_id):
-    student = Student.query.get(original_id)
-    if not student:
-        return jsonify({"error": "Student not found"}), 404
-
-    data = request.get_json()
-    
-    try:
-        student.id = data.get('id')
-        student.first_name = data.get('first_name')
-        student.last_name = data.get('last_name')
-        student.program_code = data.get('course')
-        student.year = data.get('year')
-        student.gender = data.get('gender')
-        
-        # Update photo if key exists in payload
-        if 'photo_url' in data:
-            student.photo_url = data.get('photo_url')
-            
-        db.session.commit()
-        return jsonify({"message": "Student updated successfully"}), 200
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"error": "Student ID collision or DB error."}), 409
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error updating student: {e}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
-
+# --- Catch-all Route for Frontend ---
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    # If the path points to an actual file in our static folder (like a CSS or JS file), serve it.
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    # Otherwise, it's a frontend route, so serve the main index.html file.
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)

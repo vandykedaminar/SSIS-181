@@ -1,6 +1,6 @@
-// ...existing code...
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import Image from 'next/image';
 import "./table.css";
 import InsertForm from "./InsertForm";
 import InfoCard from "./InfoCard";
@@ -15,6 +15,8 @@ import {
   SelectItem,
 } from '../../components/ui/select'
 
+const DEFAULT_PROFILE = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+
 export default function Table({
   table_name = "Table",
   headers = ["header1", "header2", "header3"],
@@ -24,8 +26,12 @@ export default function Table({
   onRefresh = null,
   onUpdate = null,
   updateEndpoint = null,
-  filterOptions = null, // e.g. ["All", "College A", "College B"] or []
-  filterColumn = null, // index of column used for filter
+  filterOptions = null, 
+  filterColumn = null,
+  showImage = false,
+  editDropdowns = null, // object like { 3: 'program', 4: 'college' }
+  colleges = [], // for dropdowns
+  programs = [], // for dropdowns
 }) {
   const [visibleInfoCard, setVisibleInfoCard] = useState(false);
   const [rowValue, setRowValue] = useState([]);
@@ -33,14 +39,14 @@ export default function Table({
   const [query, setQuery] = useState("");
 
   // sorting state
-  const [sortColumn, setSortColumn] = useState(0); // index of column to sort by
-  const [sortDirection, setSortDirection] = useState("asc"); // "asc" or "desc"
+  const [sortColumn, setSortColumn] = useState(0); 
+  const [sortDirection, setSortDirection] = useState("asc"); 
 
-  // filter state (selected value from filterOptions)
+  // filter state 
   const [filterValue, setFilterValue] = useState("");
 
   // pagination
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 10;
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -70,7 +76,7 @@ export default function Table({
       );
     }
 
-    // filter by selected filterValue (if filterColumn is provided and filterValue is not empty)
+    // filter 
     if (filterColumn !== null && filterValue) {
       rows = rows.filter((row) => {
         const cell = (row && row[filterColumn] !== undefined && row[filterColumn] !== null) ? String(row[filterColumn]) : "";
@@ -78,14 +84,14 @@ export default function Table({
       });
     }
 
-    // sort (if sortColumn valid)
+    // sort 
     const colIdx = Number(sortColumn);
     if (!Number.isNaN(colIdx)) {
       rows.sort((a, b) => {
         const va = a && a[colIdx] !== undefined && a[colIdx] !== null ? a[colIdx] : "";
         const vb = b && b[colIdx] !== undefined && b[colIdx] !== null ? b[colIdx] : "";
 
-        // try numeric compare if both numbers
+        // try numeric compare 
         const na = Number(va);
         const nb = Number(vb);
         if (!Number.isNaN(na) && !Number.isNaN(nb)) {
@@ -169,7 +175,6 @@ export default function Table({
           const body = await res.text();
           throw new Error(`Delete failed: ${res.status} ${body}`);
         }
-        // remove from local data
         setData((prev) => prev.filter((r) => r[0] !== id));
         setVisibleInfoCard(false);
         if (typeof onRefresh === "function") await onRefresh();
@@ -178,28 +183,23 @@ export default function Table({
       }
       return;
     }
-
     console.warn("No onDelete or deleteEndpoint provided to Table.");
   };
 
-  // handle updates coming from InfoCard (Save)
   const handleUpdate = async (originalValues, editedValues) => {
     try {
       const id = originalValues && originalValues[0];
       if (!id) return;
 
-      // optimistic local update
       setData((prev) => prev.map((r) => (r && r[0] === id ? editedValues : r)));
       setVisibleInfoCard(false);
 
-      // If an updateEndpoint is provided, attempt to PUT the change
       if (updateEndpoint) {
         const url =
           typeof updateEndpoint === "function"
             ? updateEndpoint(originalValues, editedValues)
             : `${updateEndpoint}/${encodeURIComponent(id)}`;
 
-        // construct payload from headers -> editedValues (best-effort)
         const payload = {};
         for (let i = 0; i < headers.length; i++) {
           const key = headers[i] || `col_${i}`;
@@ -217,12 +217,10 @@ export default function Table({
           throw new Error(`Update failed: ${res.status} ${body}`);
         }
       } else {
-        // if no endpoint, optionally call onRefresh to let parent re-sync
         if (typeof onRefresh === "function") await onRefresh();
       }
     } catch (err) {
       console.error("Update error:", err);
-      // On failure, try to re-sync from server if possible
       if (typeof onRefresh === "function") await onRefresh();
     }
   };
@@ -237,6 +235,10 @@ export default function Table({
         updateEndpoint={updateEndpoint}
         onRefresh={onRefresh}
         onUpdate={onUpdate || handleUpdate}
+        showImage={showImage}
+        editDropdowns={editDropdowns}
+        colleges={colleges}
+        programs={programs}
       />
 
       <Card className="mb-4">
@@ -277,9 +279,11 @@ export default function Table({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All</SelectItem>
-                  {filterOptions.map((opt, idx) => (
-                    <SelectItem key={idx} value={String(opt)}>{opt}</SelectItem>
-                  ))}
+                  {filterOptions.map((opt, idx) => {
+                    const value = typeof opt === 'object' && opt.value ? opt.value : opt;
+                    const label = typeof opt === 'object' && opt.label ? opt.label : opt;
+                    return <SelectItem key={idx} value={String(value)}>{label}</SelectItem>;
+                  })}
                 </SelectContent>
               </Select>
             )}
@@ -316,9 +320,45 @@ export default function Table({
                   }
                 }}
               >
-                    {headers.map((_, colIdx) => (
-                      <td key={colIdx} data-label={String(headers[colIdx] || `col_${colIdx}`)}>{row && row[colIdx] !== undefined && row[colIdx] !== null ? row[colIdx] : ""}</td>
-                    ))}
+                    {headers.map((_, colIdx) => {
+                      const cellValue = row && row[colIdx] !== undefined && row[colIdx] !== null ? row[colIdx] : "";
+                      const headerName = String(headers[colIdx] || `col_${colIdx}`);
+                      
+                      return (
+                        <td key={colIdx} data-label={headerName} style={{ verticalAlign: 'middle' }}>
+                           {headerName === "Photo" ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                          {/* This wrapper div enforces the size and shape */}
+                          <div style={{
+                            position: 'relative', // Crucial for the `fill` prop to work
+                            width: '50px',        // Fixed width
+                            height: '50px',       // Fixed height
+                            borderRadius: '50%',  // Makes it a circle
+                            overflow: 'hidden',   // Hides parts of the image outside the circle
+                            border: '1px solid rgba(255, 255, 255, 0.1)' // Optional border
+                          }}>
+                            <Image 
+                              src={cellValue || DEFAULT_PROFILE} 
+                              alt="student"
+                              fill // This prop makes the image fill its parent div
+                              style={{ 
+                                  objectFit: 'cover' // This crops the image to fit without distortion
+                              }}
+                              unoptimized
+                              className="bg-black/20"
+                              onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = DEFAULT_PROFILE;
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        cellValue
+                      )}
+                        </td>
+                      )
+                    })}
               </tr>
             ))}
             {pageRows.length === 0 && (
@@ -350,4 +390,3 @@ export default function Table({
     </>
   );
 }
-// ...existing code...

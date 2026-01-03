@@ -3,6 +3,13 @@ import './InsertForm.css'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import { useState } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select';
 
 export default function InsertForm({ 
     insert_form_name="Insert Form", 
@@ -18,14 +25,6 @@ export default function InsertForm({
         if (onSuccess) onSuccess();
     }
 
-    // Inline style object for dark inputs
-    const inputStyle = {
-        backgroundColor: 'rgba(0, 0, 0, 0.3)', 
-        color: 'white', 
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-        width: '100%'
-    };
-
     return (
         <div className="w-full bg-[#0f2a2f] border border-white/10 shadow-2xl rounded-lg overflow-hidden relative">
             
@@ -38,7 +37,7 @@ export default function InsertForm({
                 </label>
             </div>
 
-            <div className='p-6 space-y-5'>
+            <div className='p-6 space-y-5 max-h-96 overflow-y-auto'>
                 {fields.map((f, i) => (
                     <div key={i} className="w-full">
                         <label 
@@ -50,6 +49,19 @@ export default function InsertForm({
                         
                         {f[3] === 'file' ? (
                             <FileField fieldData={f} />
+                        ) : f[3] === 'select' ? (
+                            <Select value={f[1]} onValueChange={f[2]}>
+                                <SelectTrigger className="w-full" style={{ color: 'white', backgroundColor: 'rgba(0,0,0,0.3)', borderColor: 'rgba(255,255,255,0.2)' }}>
+                                    <SelectValue placeholder="Select an option" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {f[4] && f[4].map((option, idx) => (
+                                        <SelectItem key={idx} value={option.value || option}>
+                                            {option.label || option}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         ) : (
                             <Input 
                                 value={f[1]} 
@@ -60,16 +72,16 @@ export default function InsertForm({
                         )}
                     </div>
                 ))}
+            </div>
 
-                <div className="pt-4 flex justify-end">
-                    <Button 
-                        onClick={submitButton} 
-                        size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 shadow-md transition-all"
-                    >
-                        Done
-                    </Button>
-                </div>
+            <div className="p-6 pt-4 border-t border-white/10 flex justify-end bg-[#0f2a2f]">
+                <Button 
+                    onClick={submitButton} 
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 shadow-md transition-all"
+                >
+                    Done
+                </Button>
             </div>
         </div>
     )
@@ -82,6 +94,21 @@ function FileField({ fieldData }) {
     const handleFileChange = (e) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
+
+            // VALIDATION: Check Type (PNG/JPEG)
+            if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+                alert("Only PNG or JPEG images are allowed.");
+                e.target.value = null; // Clear input
+                return;
+            }
+
+            // VALIDATION: Check Size (Max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert("Image size must be less than 5MB.");
+                e.target.value = null; // Clear input
+                return;
+            }
+
             // 1. Update parent state
             fieldData[2](file);
             // 2. Update local preview
@@ -93,7 +120,7 @@ function FileField({ fieldData }) {
         <div className="flex flex-col gap-3">
             <input 
                 type="file"
-                accept="image/*"
+                accept="image/png, image/jpeg"
                 onChange={handleFileChange} 
                 style={{ color: 'white', backgroundColor: 'rgba(0,0,0,0.3)' }}
                 className="block w-full text-sm
@@ -112,10 +139,9 @@ function FileField({ fieldData }) {
                     <img 
                         src={preview} 
                         alt="Preview" 
-                        // FIXED: Forced dimensions to prevent it from being too big
                         style={{ 
-                            width: '500px', 
-                            height: '300px', 
+                            width: '200px', // Reduced preview size to be more manageable
+                            height: '200px', 
                             objectFit: 'cover' 
                         }}
                         className="rounded-full border-2 border-emerald-500 shadow-sm"

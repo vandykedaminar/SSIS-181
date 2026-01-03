@@ -4,13 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+cors = "*"
 flask = "*"
-flask-sqlalchemy = "*"
-flask-migrate = "*"
-flask-marshmallow = "*"
+flask-cors = "*"
 psycopg2-binary = "*"
 python-dotenv = "*"
-cors = "*"
 
 [dev-packages]
 pytest = "*"

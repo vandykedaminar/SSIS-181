@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import Table from "../page";
-import InsertDialog from "../InsertDialog"; // Changed import
+import InsertDialog from "../InsertDialog"; 
 import { useToast } from '../../../components/ToastContext';
 
-const API_BASE = "http://192.168.1.9:5000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function Colleges() {
   const [college_code, set_college_code] = useState("");
