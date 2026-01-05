@@ -4,6 +4,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  distDir: '../backend/out', 
 };
 
 export default nextConfig;

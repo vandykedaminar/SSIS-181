@@ -9,14 +9,10 @@ from routes.college import college_bp
 from routes.program import program_bp
 from routes.student import student_bp
 
-# --- Production Setup ---
-# Get the absolute path of the directory where this app.py file is located
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-# Construct the absolute path to the 'out' folder
-static_folder_path = os.path.join(os.path.dirname(basedir), 'frontend', 'out')
+static_folder_path = os.path.join(basedir, 'out')
 
-# Initialize Flask, telling it where to find the static files
 app = Flask(__name__, static_folder=static_folder_path)
 
 app.secret_key = "dev-secret-change-me"
@@ -35,10 +31,8 @@ app.register_blueprint(student_bp)
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
-    # If the path points to an actual file in our static folder (like a CSS or JS file), serve it.
     if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
-    # Otherwise, it's a frontend route, so serve the main index.html file.
     else:
         return send_from_directory(app.static_folder, 'index.html')
 
