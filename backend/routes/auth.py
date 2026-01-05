@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, jsonify, request, session
 
 auth_bp = Blueprint('auth', __name__)
@@ -9,15 +10,14 @@ def auth_login():
         email = data.get('email')
         password = data.get('password')
         # demo credentials
-        if email == 'vandykedaminar@gmail.com' and password == 'password':
+        if email == os.getenv('ADMIN_EMAIL') and password == os.getenv('ADMIN_PASSWORD'):
             session['authenticated'] = True
             session['email'] = email
-            resp = jsonify({"authenticated": True, "email": email})
-            return resp, 200
+            return jsonify({"authenticated": True, "email": email}), 200
+        
         return jsonify({"authenticated": False}), 401
     except Exception as e:
-        print('Auth login error:', e)
-        return jsonify({"authenticated": False, "error": "server_error"}), 500
+        return jsonify({"authenticated": False, "error": str(e)}), 500
 
 @auth_bp.route('/auth/status')
 def auth_status():

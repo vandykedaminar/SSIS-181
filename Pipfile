@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 faker = "*"
+python-dotenv = "*"
 
 [dev-packages]
 honcho = "*"
