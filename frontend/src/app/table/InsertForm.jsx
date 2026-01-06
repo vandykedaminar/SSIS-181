@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../components/ui/select';
+import { useToast } from '../../components/ToastContext';
 
 export default function InsertForm({ 
     insert_form_name="Insert Form", 
@@ -87,31 +88,26 @@ export default function InsertForm({
     )
 }
 
-// Sub-component to handle file preview state locally
 function FileField({ fieldData }) {
     const [preview, setPreview] = useState(null);
-
+    const { showToast } = useToast(); 
     const handleFileChange = (e) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
 
-            // VALIDATION: Check Type (PNG/JPEG)
             if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-                alert("Only PNG or JPEG images are allowed.");
-                e.target.value = null; // Clear input
+                showToast("Only PNG or JPEG images are allowed.", { type: 'error' });
+                e.target.value = null; 
                 return;
             }
 
-            // VALIDATION: Check Size (Max 5MB)
             if (file.size > 5 * 1024 * 1024) {
-                alert("Image size must be less than 5MB.");
-                e.target.value = null; // Clear input
+                showToast("Image size must be less than 5MB.", { type: 'error' });
+                e.target.value = null; 
                 return;
             }
 
-            // 1. Update parent state
             fieldData[2](file);
-            // 2. Update local preview
             setPreview(URL.createObjectURL(file));
         }
     };
@@ -123,27 +119,15 @@ function FileField({ fieldData }) {
                 accept="image/png, image/jpeg"
                 onChange={handleFileChange} 
                 style={{ color: 'white', backgroundColor: 'rgba(0,0,0,0.3)' }}
-                className="block w-full text-sm
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-emerald-600 file:text-white
-                    hover:file:bg-emerald-500
-                    cursor-pointer
-                    rounded-lg border border-white/10"
+                className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer rounded-lg border border-white/10"
             />
             
-            {/* PREVIEW AREA */}
             {preview && (
                 <div className="flex justify-center mt-2 p-2 bg-black/20 rounded border border-white/5">
                     <img 
                         src={preview} 
                         alt="Preview" 
-                        style={{ 
-                            width: '200px', // Reduced preview size to be more manageable
-                            height: '200px', 
-                            objectFit: 'cover' 
-                        }}
+                        style={{ width: '200px', height: '200px', objectFit: 'cover' }}
                         className="rounded-full border-2 border-emerald-500 shadow-sm"
                     />
                 </div>

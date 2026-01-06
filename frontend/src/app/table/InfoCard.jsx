@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { supabase } from "../../lib/supabaseClient"; 
+import { useToast } from '../../components/ToastContext'; 
 
 const DEFAULT_IMAGE = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
 
@@ -39,6 +40,7 @@ export default function InfoCard({
   
   const [newPhotoFile, setNewPhotoFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (visible) {
@@ -80,7 +82,7 @@ export default function InfoCard({
             finalValues[7] = publicData.publicUrl; // Assuming Photo is at index 7
         } catch (err) {
             console.error("Image upload failed:", err);
-            alert("Failed to upload new image.");
+            showToast("Failed to upload new image. Try again.", { type: 'error' }); 
             return; 
         }
     }
@@ -98,7 +100,19 @@ export default function InfoCard({
   const onFileSelect = (e) => {
     if (!showImage || !e.target.files[0]) return;
     const file = e.target.files[0];
-    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) return alert("PNG/JPEG only.");
+    
+    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+        showToast("Only PNG or JPEG images are allowed.", { type: 'error' });
+        e.target.value = null;
+        return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        showToast("Image size must be less than 5MB.", { type: 'error' });
+        e.target.value = null;
+        return;
+    }
+
     setNewPhotoFile(file);
     setPreviewUrl(URL.createObjectURL(file)); 
   };

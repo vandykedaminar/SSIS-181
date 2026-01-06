@@ -109,7 +109,22 @@ export default function Students() {
     updatePrograms();
   }, [updateTableData, updateColleges, updatePrograms]);
 
-  // --- FILTER LOGIC (NEW) ---
+  const getFilteredCount = (targetColIndex, targetValue) => {
+    if (!table_data) return 0;
+
+    return table_data.filter(row => {
+      if (targetColIndex !== 4 && filterCollege !== "All" && row[4] !== filterCollege) return false;
+
+      if (targetColIndex !== 3 && filterProgram !== "All" && row[3] !== filterProgram) return false;
+
+      if (targetColIndex !== 6 && filterSex !== "All" && row[6] !== filterSex) return false;
+
+      if (targetColIndex !== 5 && filterYear !== "All" && row[5] !== filterYear) return false;
+
+      return String(row[targetColIndex]) === String(targetValue);
+    }).length;
+  };
+
   const filteredData = useMemo(() => {
     return table_data.filter((row) => {
       // Index 4 is College Name
@@ -331,46 +346,60 @@ export default function Students() {
             />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 p-4 bg-[#0f2a2f]/50 border border-white/10 rounded-lg shadow-lg">
+         <div className="grid grid-cols-1 md:grid-cols-5 gap-3 p-4 bg-[#0f2a2f]/50 border border-white/10 rounded-lg shadow-lg">
             
+            {/* College Filter */}
             <div className="space-y-1">
                 <label className="text-xs text-gray-400 font-semibold uppercase">College</label>
                 <Select value={filterCollege} onValueChange={setFilterCollege}>
                     <SelectTrigger className={selectStyle}><SelectValue placeholder="All Colleges" /></SelectTrigger>
                     <SelectContent>
+                        {/* The "All" option shows the total count based on other active filters */}
                         <SelectItem value="All">All Colleges</SelectItem>
                         {filterCollegeOptions.map((cName, i) => (
-                            <SelectItem key={i} value={cName}>{cName}</SelectItem>
+                            <SelectItem key={i} value={cName}>
+                                {cName} ({getFilteredCount(4, cName)})
+                            </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
             </div>
 
+            {/* Program Filter */}
             <div className="space-y-1">
                 <label className="text-xs text-gray-400 font-semibold uppercase">Program</label>
                 <Select value={filterProgram} onValueChange={setFilterProgram}>
                     <SelectTrigger className={selectStyle}><SelectValue placeholder="All Programs" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="All">All Programs</SelectItem>
-                        {filterProgramOptions.map((pCode, i) => (
-                            <SelectItem key={i} value={pCode}>{pCode}</SelectItem>
-                        ))}
+                        {filterProgramOptions.map((pCode, i) => {
+                            // If a college is selected, only show programs for that college
+                            // (You already have this logic in filterProgramOptions, which is good)
+                            const count = getFilteredCount(3, pCode);
+                            return (
+                                <SelectItem key={i} value={pCode}>
+                                    {pCode} ({count})
+                                </SelectItem>
+                            );
+                        })}
                     </SelectContent>
                 </Select>
             </div>
 
+            {/* Sex Filter */}
             <div className="space-y-1">
                 <label className="text-xs text-gray-400 font-semibold uppercase">Sex</label>
                 <Select value={filterSex} onValueChange={setFilterSex}>
                     <SelectTrigger className={selectStyle}><SelectValue placeholder="All" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="All">All</SelectItem>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Male">Male ({getFilteredCount(6, "Male")})</SelectItem>
+                        <SelectItem value="Female">Female ({getFilteredCount(6, "Female")})</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
 
+            {/* Year Filter */}
             <div className="space-y-1">
                 <label className="text-xs text-gray-400 font-semibold uppercase">Year Level</label>
                 <Select value={filterYear} onValueChange={setFilterYear}>
@@ -378,7 +407,9 @@ export default function Students() {
                     <SelectContent>
                         <SelectItem value="All">All</SelectItem>
                         {[1, 2, 3, 4, 5, 6].map(y => (
-                            <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                            <SelectItem key={y} value={String(y)}>
+                                {y} ({getFilteredCount(5, y)})
+                            </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
